@@ -1,0 +1,36 @@
+﻿@page
+@model ClientXMLApp.Pages.IndexModel
+@{
+    ViewData["Title"] = "Client List";
+}
+
+<h2>Client List</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Addresses</th>
+            <th>Birth Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var client in Model.Clients)
+        {
+            <tr>
+                <td>@client.ID</td>
+                <td>@client.Name</td>
+                <td>
+                    <ul>
+                        @foreach (var address in client.Addresses)
+                        {
+                            <li>@address.AddressText (Type @address.Type)</li>
+                        }
+                    </ul>
+                </td>
+                <td>@client.BirthDate.ToShortDateString()</td>
+            </tr>
+        }
+    </tbody>
+</table>
