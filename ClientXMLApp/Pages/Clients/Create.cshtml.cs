@@ -18,6 +18,7 @@ namespace ClientXMLApp.Pages.Client
             _clientService = clientService;
             Client = new AddClientDto();
             Client.Addresses = new List<AddressDto>();
+            Client.BirthDate = DateTime.Now;
         }
 
         public void OnGet()
@@ -33,7 +34,7 @@ namespace ClientXMLApp.Pages.Client
 
             await _clientService.AddClientAsync(Client);
 
-            return RedirectToPage("Clients");
+            return RedirectToPage("/Clients/View");
         }
 
         public AddressType[] AddressTypes => (AddressType[])Enum.GetValues(typeof(AddressType));
