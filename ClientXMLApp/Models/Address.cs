@@ -6,11 +6,11 @@ namespace ClientXMLApp.Models
 {
     public class Address
     {
-        [Key, Column(Order = 0)]
-        public AddressType Type { get; set; }
+        [Key]
+        public int ID { get; set; }
 
-        [Key, Column(Order = 1)]
-        public string ClientID { get; set; }
+        public AddressType Type { get; set; }
+        public int ClientID { get; set; }
 
         [ForeignKey("ClientID")]
         public Client Client { get; set; }

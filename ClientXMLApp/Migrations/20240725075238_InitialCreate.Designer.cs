@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClientXMLApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20240725005548_InitialCreate")]
+    [Migration("20240725075238_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -27,19 +27,23 @@ namespace ClientXMLApp.Migrations
 
             modelBuilder.Entity("ClientXMLApp.Models.Address", b =>
                 {
-                    b.Property<int>("Type")
-                        .HasColumnType("int")
-                        .HasColumnOrder(0);
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("ClientID")
-                        .HasColumnType("nvarchar(450)")
-                        .HasColumnOrder(1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<string>("AddressText")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Type", "ClientID");
+                    b.Property<int>("ClientID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("ID");
 
                     b.HasIndex("ClientID");
 
@@ -48,8 +52,11 @@ namespace ClientXMLApp.Migrations
 
             modelBuilder.Entity("ClientXMLApp.Models.Client", b =>
                 {
-                    b.Property<string>("ID")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ID"));
 
                     b.Property<DateTime>("BirthDate")
                         .HasColumnType("datetime2");

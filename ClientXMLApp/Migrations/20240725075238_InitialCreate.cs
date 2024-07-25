@@ -15,7 +15,8 @@ namespace ClientXMLApp.Migrations
                 name: "Clients",
                 columns: table => new
                 {
-                    ID = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     BirthDate = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -28,13 +29,15 @@ namespace ClientXMLApp.Migrations
                 name: "Addresses",
                 columns: table => new
                 {
+                    ID = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     Type = table.Column<int>(type: "int", nullable: false),
-                    ClientID = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ClientID = table.Column<int>(type: "int", nullable: false),
                     AddressText = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Addresses", x => new { x.Type, x.ClientID });
+                    table.PrimaryKey("PK_Addresses", x => x.ID);
                     table.ForeignKey(
                         name: "FK_Addresses_Clients_ClientID",
                         column: x => x.ClientID,

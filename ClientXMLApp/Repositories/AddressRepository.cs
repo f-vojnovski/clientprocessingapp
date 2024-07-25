@@ -18,11 +18,6 @@ namespace ClientXMLApp.Repositories
             return await _context.Addresses.ToListAsync();
         }
 
-        public async Task<Address> GetAddressByIdAsync(AddressType type, string clientId)
-        {
-            return await _context.Addresses.FirstOrDefaultAsync(a => a.Type == type && a.ClientID == clientId);
-        }
-
         public async Task AddAddressAsync(Address address)
         {
             await _context.Addresses.AddAsync(address);
@@ -33,13 +28,20 @@ namespace ClientXMLApp.Repositories
             _context.Addresses.Update(address);
         }
 
-        public async Task DeleteAddressAsync(AddressType type, string clientId)
+        public async Task DeleteAddressAsync(int id)
         {
-            var address = await _context.Addresses.FirstOrDefaultAsync(a => a.Type == type && a.ClientID == clientId);
+            var address = await _context.Addresses.FirstOrDefaultAsync(a => a.ID == id);
             if (address != null)
             {
                 _context.Addresses.Remove(address);
             }
+        }
+
+        public async Task<IEnumerable<Address>> GetAllAddressesForClientAsync(int clientId)
+        {
+            return await _context.Addresses
+                .Where(a => a.ClientID == clientId)
+                .ToListAsync();
         }
     }
 }

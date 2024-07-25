@@ -1,0 +1,99 @@
+﻿@page
+@model ClientXMLApp.Pages.Client.CreateModel
+@{
+    ViewData["Title"] = "Add New Client";
+}
+
+<h2>Add New Client</h2>
+
+<form method="post">
+    <div class="form-group">
+        <label asp-for="Client.Name"></label>
+        <input asp-for="Client.Name" class="form-control" />
+        <span asp-validation-for="Client.Name" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label asp-for="Client.BirthDate"></label>
+        <input asp-for="Client.BirthDate" class="form-control" />
+        <span asp-validation-for="Client.BirthDate" class="text-danger"></span>
+    </div>
+    <div class="form-group">
+        <label>Addresses</label>
+        <table class="table" id="addressTable">
+            <thead>
+                <tr>
+                    <th>Address Text</th>
+                    <th>Type</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < Model.Client.Addresses.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            <input asp-for="Client.Addresses[i].AddressText" class="form-control" />
+                            <span asp-validation-for="Client.Addresses[i].AddressText" class="text-danger"></span>
+                        </td>
+                        <td>
+                            <select asp-for="Client.Addresses[i].Type" class="form-control">
+                                @foreach (var addressType in Model.AddressTypes)
+                                {
+                                    <option value="@addressType">@addressType</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Client.Addresses[i].Type" class="text-danger"></span>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger remove-address">Remove</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-primary" id="addAddress">Add Address</button>
+    </div>
+    <button type="submit" class="btn btn-primary">Add Client</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('addAddress').addEventListener('click', function () {
+            const table = document.getElementById('addressTable').getElementsByTagName('tbody')[0];
+            const rowCount = table.rows.length;
+
+            const newRow = table.insertRow(rowCount);
+            newRow.innerHTML = `
+                        <tr>
+                            <td>
+                                <input name="Client.Addresses[${rowCount}].AddressText" class="form-control" />
+                            </td>
+                            <td>
+                                <select name="Client.Addresses[${rowCount}].Type" class="form-control">
+        @foreach (var addressType in Model.AddressTypes)
+        {
+                                            <option value="@addressType">@addressType</option>
+        }
+                                </select>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-danger remove-address">Remove</button>
+                            </td>
+                        </tr>
+                    `;
+            bindRemoveButtons();
+        });
+
+        function bindRemoveButtons() {
+            document.querySelectorAll('.remove-address').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const row = this.closest('tr');
+                    row.parentNode.removeChild(row);
+                });
+            });
+        }
+
+        bindRemoveButtons();
+    </script>
+}
