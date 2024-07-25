@@ -9,5 +9,6 @@ namespace ClientXMLApp.Services
         Task AddClientAsync(AddClientDto clientDto);
         Task UpdateClientAsync(UpdateClientDto clientDto);
         Task DeleteClientAsync(int id);
+        Task AddClientsAsync(IEnumerable<AddClientDto> clientDtos);
     }
 }

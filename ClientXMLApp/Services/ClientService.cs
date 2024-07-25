@@ -115,5 +115,34 @@ namespace ClientXMLApp.Services
                 throw;
             }
         }
+
+        public async Task AddClientsAsync(IEnumerable<AddClientDto> clientDtos)
+        {
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                foreach (var clientDto in clientDtos)
+                {
+                    var client = _mapper.Map<Client>(clientDto);
+                    await _unitOfWork.Clients.AddClientAsync(client);
+                    await _unitOfWork.CompleteAsync();
+
+                    foreach (var addressDto in clientDto.Addresses)
+                    {
+                        var address = _mapper.Map<Address>(addressDto);
+                        address.ClientID = client.ID;
+                        await _unitOfWork.Addresses.AddAddressAsync(address);
+                    }
+                }
+
+                await _unitOfWork.CompleteAsync();
+                await _unitOfWork.CommitTransactionAsync();
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
     }
 }

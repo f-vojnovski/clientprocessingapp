@@ -1,4 +1,3 @@
-using AutoMapper;
 using ClientXMLApp.Data;
 using ClientXMLApp.Services;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +10,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IClientImportService, ClientImportService>();
 
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 

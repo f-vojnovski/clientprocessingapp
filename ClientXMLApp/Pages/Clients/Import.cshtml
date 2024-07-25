@@ -1,0 +1,29 @@
+﻿@page
+@model ClientXMLApp.Pages.Clients.ImportModel
+@{
+    ViewData["Title"] = "Import Clients";
+}
+
+<h2>Import Clients</h2>
+
+<form method="post" enctype="multipart/form-data">
+    <div class="form-group">
+        <label for="xmlFile">Select XML File</label>
+        <input type="file" id="xmlFile" name="xmlFile" class="form-control" accept=".xml" />
+    </div>
+    <button type="submit" class="btn btn-primary">Import</button>
+</form>
+
+@if (Model.ImportSuccess)
+{
+    <div class="alert alert-success mt-3">
+        Clients imported successfully!
+    </div>
+}
+
+@if (Model.ImportError != null)
+{
+    <div class="alert alert-danger mt-3">
+        Error importing clients: @Model.ImportError
+    </div>
+}

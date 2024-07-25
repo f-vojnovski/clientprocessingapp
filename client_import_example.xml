@@ -1,0 +1,18 @@
+<Clients>
+    <Client ID="12345">
+        <Name>Ime1</Name>
+        <Addresses>
+            <Address Type="1">Home address</Address>
+            <Address Type="2">Weekend address</Address>
+        </Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+    <Client ID="54321">
+        <Name>Ime2</Name>
+        <Addresses>
+            <Address Type="1">Home address</Address>
+            <Address Type="2">Weekend address</Address>
+        </Addresses>
+        <BirthDate>2003-09-01</BirthDate>
+    </Client>
+</Clients>
