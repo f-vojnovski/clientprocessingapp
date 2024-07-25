@@ -15,10 +15,26 @@ namespace ClientXMLApp.Services
             _mapper = mapper;
         }
 
-        public async Task<IEnumerable<ViewClientDto>> GetAllClientsAsync()
+        public async Task<IEnumerable<ViewClientDto>> GetAllClientsAsync(ClientSortingOptions sortBy = ClientSortingOptions.None, bool sortAscending = true)
         {
             var clients = await _unitOfWork.Clients.GetAllClientsAsync();
-            return clients.Select(client => _mapper.Map<ViewClientDto>(client));
+            var clientDtos = clients.Select(client => _mapper.Map<ViewClientDto>(client));
+
+            switch (sortBy)
+            {
+                case ClientSortingOptions.Name:
+                    clientDtos = sortAscending
+                        ? clientDtos.OrderBy(c => c.Name)
+                        : clientDtos.OrderByDescending(c => c.Name);
+                    break;
+                case ClientSortingOptions.BirthDate:
+                    clientDtos = sortAscending
+                        ? clientDtos.OrderBy(c => c.BirthDate)
+                        : clientDtos.OrderByDescending(c => c.BirthDate);
+                    break;
+            }
+
+            return clientDtos;
         }
 
         public async Task<ViewClientDto> GetClientByIdAsync(int id)
