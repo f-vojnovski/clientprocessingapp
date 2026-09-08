@@ -1,5 +1,4 @@
-﻿using AutoMapper;
-using ClientXMLApp.Models;
+﻿using ClientXMLApp.Models;
 using ClientXMLApp.Services.DTOs;
 using System.Xml.Serialization;
 
@@ -9,7 +8,7 @@ namespace ClientXMLApp.Services
     {
         private readonly IClientService _clientService;
 
-        public ClientImportService(IClientService clientService, IMapper mapper)
+        public ClientImportService(IClientService clientService)
         {
             _clientService = clientService;
         }
