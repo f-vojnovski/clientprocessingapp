@@ -2,8 +2,8 @@
 
 An ASP.NET Core Razor Pages application for importing client records from XML and managing
 them against SQL Server. Clients come in through a web form or as an uploaded XML file with
-nested address lists. Both paths validate the input and write it through a repository and
-unit-of-work layer inside a single transaction.
+nested address lists. Both paths validate the input against the same rules and write it in a
+single database round trip.
 
 The XML import is the part worth reading. It takes a `Clients -> Client -> Addresses -> Address`
 document where identifiers and address types are attributes and address text is the element
@@ -13,23 +13,24 @@ body, and maps it onto plain C# classes with `XmlSerializer` and serialization a
 
 - Upload an XML file and import every client and address it contains ([Import](ClientXMLApp/Pages/Clients/Import.cshtml))
 - Add a single client with a dynamic, add-and-remove address table ([Create](ClientXMLApp/Pages/Clients/Create.cshtml))
-- List clients with their addresses, sortable by name or birth date in either direction ([View](ClientXMLApp/Pages/Clients/View.cshtml))
-- Export the current client list to a `clients.json` download
+- List clients with their addresses, sorted and paged by the database ([View](ClientXMLApp/Pages/Clients/View.cshtml))
+- Export every client to a `clients.json` download
 - Server-side and client-side validation on client and address input
-- Transactional writes with rollback, so a malformed file leaves no partial data behind
+- Writes that either land completely or leave the tables untouched
 
 ## Stack
 
-.NET 8, ASP.NET Core Razor Pages, Entity Framework Core 8.0.7 with the SQL Server provider,
-AutoMapper 13.0.1, Bootstrap 5 and jQuery validation for the front end.
+.NET 8, ASP.NET Core Razor Pages, Entity Framework Core 8.0.30 with the SQL Server provider,
+AutoMapper 15.1.3, Bootstrap 5 and jQuery validation for the front end. Tests are xUnit against
+the EF Core SQLite provider.
 
 ## Architecture
 
-Four layers, wired together by constructor injection and registered in
+Three layers, wired together by constructor injection and registered in
 [Program.cs](ClientXMLApp/Program.cs):
 
 ```
-Razor Pages  ->  Services  ->  Unit of Work  ->  Repositories  ->  EF Core / SQL Server
+Razor Pages  ->  Services  ->  EF Core / SQL Server
 ```
 
 ### Pages
@@ -41,46 +42,40 @@ and [View.cshtml.cs](ClientXMLApp/Pages/Clients/View.cshtml.cs) depend on `IClie
 ### Services
 
 [IClientService](ClientXMLApp/Services/IClientService.cs) exposes the client operations:
-`GetAllClientsAsync`, `GetClientByIdAsync`, `AddClientAsync`, `UpdateClientAsync`,
-`DeleteClientAsync`, and the bulk `AddClientsAsync` the importer uses.
+`GetClientsAsync` for a page of the listing, `GetAllClientsAsync` for the export,
+`GetClientByIdAsync`, `AddClientAsync`, `UpdateClientAsync`, `DeleteClientAsync`, and the bulk
+`AddClientsAsync` the importer uses. Every method takes a `CancellationToken`, which the page
+handlers pass down from the request.
 
-[ClientService](ClientXMLApp/Services/ClientService.cs) opens a transaction for every write,
-rolls back and rethrows on failure, and handles the identity-key ordering that address inserts
-require: the client is saved first so SQL Server assigns its `ID`, then each address is written
-with that `ID` as its foreign key. Sorting is applied to the mapped DTOs in
-`GetAllClientsAsync` based on a `ClientSortingOptions` value and an ascending flag.
+[ClientService](ClientXMLApp/Services/ClientService.cs) is the only class that touches
+`AppDbContext`. Sorting and paging are applied to the `IQueryable`, so they become an `ORDER BY`
+and an `OFFSET`/`FETCH` the server can satisfy from an index. Addresses travel with their client
+into `SaveChanges`, so EF assigns their foreign keys during relationship fixup.
 
 [ClientImportService](ClientXMLApp/Services/ClientImportService.cs) owns XML deserialization
-and delegates persistence to `IClientService`, so it holds no repository or transaction code
+and delegates persistence to `IClientService`, so it holds no query or transaction code
 of its own.
 
-### Unit of work
+### Data access
 
-[IUnitOfWork](ClientXMLApp/Data/IUnitOfWork.cs) hands out the two repositories and controls
-the transaction boundary: `CompleteAsync`, `BeginTransactionAsync`, `CommitTransactionAsync`,
-`RollbackTransactionAsync`. [UnitOfWork](ClientXMLApp/Data/UnitOfWork.cs) constructs both
-repositories over one shared `AppDbContext`, so a multi-client import commits or fails as one
-atomic operation.
-
-### Repositories
-
-[IClientRepository](ClientXMLApp/Repositories/IClientRepository.cs) and
-[IAddressRepository](ClientXMLApp/Repositories/IAddressRepository.cs) keep LINQ and EF Core
-concerns out of the service layer. Client reads eagerly `Include` their addresses;
-`IAddressRepository` adds `GetAllAddressesForClientAsync`, which the delete path uses to clear
-a client's addresses before the client itself. Repository methods stage changes only, leaving
-`SaveChangesAsync` to the unit of work.
+Services talk to EF Core directly. `DbContext` is the unit of work and `DbSet<T>` is the
+repository, so nothing wraps them, and a query stays an `IQueryable` until it is materialised,
+which is what allows sorting and paging to run in SQL. Each write is a single
+`SaveChangesAsync`, which EF wraps in a transaction of its own.
 
 ### DTOs and mapping
 
-Entities never reach a page. Six files under [Services/DTOs](ClientXMLApp/Services/DTOs)
-define the boundary types: `AddClientDto`, `UpdateClientDto`, `ViewClientDto`, `AddressDto`,
-the `ClientSortingOptions` enum, and `ClientXMLImportData.cs`, which holds the three
-serialization types `XmlClientList`, `XmlClient` and `XmlAddress`.
+Entities never reach a page. [Services/DTOs](ClientXMLApp/Services/DTOs) defines the boundary
+types: `AddClientDto`, `UpdateClientDto`, `ViewClientDto`, `AddressDto`, the `ClientQuery` and
+`PagedResult<T>` pair that carries a listing request and its answer, the `ClientSortingOptions`
+enum, and `ClientXMLImportData.cs`, which holds the three serialization types `XmlClientList`,
+`XmlClient` and `XmlAddress`.
 
 [MappingProfile](ClientXMLApp/Services/MappingProfile.cs) registers the entity-to-DTO
 conversions with AutoMapper, including the nested address collections, and is picked up by
-`AddAutoMapper(typeof(MappingProfile))`.
+`AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>())`. A test calls
+`AssertConfigurationIsValid()`, so an unmapped member fails the build instead of the first
+request that hits it.
 
 ### Dependency injection
 
@@ -88,11 +83,10 @@ conversions with AutoMapper, including the nested address collections, and is pi
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("local")));
 
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IClientImportService, ClientImportService>();
 
-builder.Services.AddAutoMapper(typeof(MappingProfile));
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 ```
 
 ## XML import
@@ -144,37 +138,59 @@ into the insert; keys are assigned by the database identity column.
 ### Import flow
 
 1. [Import.cshtml.cs](ClientXMLApp/Pages/Clients/Import.cshtml.cs) accepts the upload as an
-   `IFormFile`, rejects an empty selection, and writes the file to a temporary path.
-2. `ImportClientsAsync` deserializes it with `new XmlSerializer(typeof(XmlClientList))` over a
-   `StreamReader` and projects the result into `AddClientDto` and `AddressDto` instances.
-3. `AddClientsAsync` writes every client and its addresses inside one transaction. A failure
-   part-way through rolls the whole file back.
-4. The temporary file is deleted, and the page reports either success or the exception message.
+   `IFormFile`, rejects an empty selection or anything over 10 MB, and opens its read stream.
+   Nothing is written to disk on any path.
+2. `ImportClientsAsync` takes that `Stream` and reads it with `XmlSerializer` over an
+   `XmlReader` configured with `DtdProcessing.Prohibit` and no resolver, so an uploaded file
+   cannot pull in an external entity or expand one of its own.
+3. Every record is checked against the DTO annotations before anything is written. One bad
+   record rejects the file, and the message names which record and which rule.
+4. `AddClientsAsync` inserts the batch with a single `SaveChangesAsync`, and the page reports
+   how many clients were imported.
+
+A file the importer will not accept raises `ClientImportException`, whose message is written for
+whoever uploaded it. The page shows that and logs the cause. Anything else is a fault: outside
+Development the pipeline sends it to `/Error`, so no exception message reaches a browser.
 
 ## Validation
 
 Validation lives on the DTOs as data annotations, so the same rules apply to form posts and to
-imported records. `AddClientDto` requires a name of at least three characters and a birth date;
-`AddressDto` requires an address text of at least five characters and a type. `ModelState`
-gates the create post. The add-client page also runs jQuery unobtrusive validation and keeps
-the submit button disabled until the form is valid.
+imported records. `AddClientDto` requires a name of 3 to 200 characters and a birth date;
+`AddressDto` requires an address text of 5 to 400 characters and a type. `ModelState`
+gates the create post, `ClientImportService` runs the same annotations over each imported
+record, and the add-client page also runs jQuery unobtrusive validation and keeps the submit
+button disabled until the form is valid. The two length bounds match the column widths, so
+over-long input is a validation message rather than a truncation error out of SQL Server.
+
+## Listing, sorting and paging
+
+`ClientQuery` carries the sort column, the direction and the window, and clamps all of them
+before they reach a query: the page size defaults to 20 and stops at 200, and a sort value that
+is not a defined enum member falls back to no sort. `PagedResult<T>` returns the page and the
+total row count together, which is what lets the view draw a pager without a second query.
+Reads are `AsNoTracking` and split, so including addresses does not multiply out the rows.
 
 ## Data model
 
-`Client` has an identity key, a name, a birth date and a collection of addresses. `Address` has
-an identity key, an `AddressType`, its text, and a `ClientID` foreign key.
-[AppDbContext](ClientXMLApp/Data/AppDbContext.cs) configures the keys, the generated values and
-the one-to-many relationship in `OnModelCreating`.
+`Client` has an identity key, a name of up to 200 characters, a birth date and a collection of
+addresses. `Address` has an identity key, an `AddressType`, its text of up to 400 characters,
+and a `ClientID` foreign key. Keys, identity columns and the foreign key all follow convention,
+so [AppDbContext](ClientXMLApp/Data/AppDbContext.cs) configures the cascade and the two sort
+indexes and leaves the rest alone. Deleting a client is a single `ExecuteDelete`, and the
+declared cascade takes its addresses with it.
 
 The [InitialCreate](ClientXMLApp/Migrations/20240725075238_InitialCreate.cs) migration creates
 both tables with `SqlServer:Identity` columns, an index on `Addresses.ClientID`, and a
 cascade-delete foreign key back to `Clients`.
+[AddStringLengthsAndSortIndexes](ClientXMLApp/Migrations/20260909014012_AddStringLengthsAndSortIndexes.cs)
+bounds `Name` and `AddressText` and adds `IX_Clients_Name` and `IX_Clients_BirthDate`, since
+`nvarchar(max)` cannot be indexed and the listing sorts on both columns.
 
 ## JSON export
 
-The client list page serializes the current view models into the page, then builds the file in
-the browser from a `Blob` and an object URL, and saves it as `clients.json`. The export
-reflects whatever sort order is applied at the time.
+A page handler queries the whole table in the current sort order and returns it as a file, so
+the export covers every client rather than the page on screen. Address types are written as
+names.
 
 ## Running it
 
@@ -208,6 +224,12 @@ dotnet ef database update --project ClientXMLApp
 dotnet run --project ClientXMLApp
 ```
 
+The tests need none of that, since they bring their own database:
+
+```bash
+dotnet test
+```
+
 The listening URL is printed on startup. From the home page, `Import XML` takes
 `client_import_example.xml`, and `Clients` shows the imported records with their addresses.
 
@@ -218,25 +240,44 @@ Restore Bootstrap and jQuery there, or repoint the references in
 at CDN copies. The app runs without them; only styling and in-browser validation are affected,
 and server-side validation is unchanged.
 
+## Tests
+
+[tests/ClientXMLApp.Tests](tests/ClientXMLApp.Tests) holds 32 tests that run in about a second.
+They use SQLite in memory rather than the EF in-memory provider, since the behaviour under test
+belongs to the database: `ORDER BY`, `LIMIT`/`OFFSET`, cascade delete, identity keys.
+
+A `SaveChanges` interceptor counts round trips, which is how a batch insert is held to one save.
+A log callback captures the SQL EF sends, so a test can assert the `ORDER BY` and the window are
+in the statement.
+
+The importer tests need no database. A recording stand-in for `IClientService` takes the place
+of persistence, and they cover the attribute mapping, a truncated document, a wrong root
+element, an unparseable date, a declared DTD, an empty document, a name below the minimum, a
+name past the column width, and the sample file in the repository root.
+
+Test schemas come from `EnsureCreated()` against the EF model, so the migrations themselves are
+not exercised.
+
 ## Project layout
 
 ```
 ClientXMLApp/
-  Data/            AppDbContext, IUnitOfWork, UnitOfWork
+  Data/            AppDbContext
   Models/          Client, Address, AddressType
-  Repositories/    IClientRepository, IAddressRepository and implementations
-  Services/        IClientService, IClientImportService, MappingProfile
+  Services/        IClientService, IClientImportService, MappingProfile, ClientImportException
     DTOs/          boundary types and the XML serialization types
-  Migrations/      InitialCreate and the model snapshot
+  Migrations/      InitialCreate, AddStringLengthsAndSortIndexes, model snapshot
   Pages/
     Clients/       Create, Import, View
+tests/
+  ClientXMLApp.Tests/
 client_import_example.xml
 ```
 
 ## Scope
 
-A self-contained practice project, built to work through XML deserialization with attribute
-mapping and a clean separation between pages, services, and data access. The feature set covers
-import, create, list, sort, and export. Update and delete exist in the service and repository
-layers but have no page in front of them, and there is no authentication, paging, or test
-project.
+A small demonstration build that wires one stack end to end: XML deserialization with attribute
+mapping, one set of validation rules across both entry points, a listing the database sorts and
+pages, and a schema whose bounds and indexes match the queries it serves. The feature set covers
+import, create, list, sort, and export. Update and delete exist in the service with tests and no
+page in front of them, and there is no authentication.
