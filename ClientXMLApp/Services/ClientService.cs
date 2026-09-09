@@ -53,13 +53,6 @@ namespace ClientXMLApp.Services
             }
         }
 
-        public async Task<ViewClientDto?> GetClientByIdAsync(int id, CancellationToken cancellationToken = default)
-        {
-            var client = await ReadOnlyClients().FirstOrDefaultAsync(c => c.ID == id, cancellationToken);
-
-            return client == null ? null : _mapper.Map<ViewClientDto>(client);
-        }
-
         public async Task<int> AddClientAsync(AddClientDto clientDto, CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(clientDto);
@@ -69,43 +62,6 @@ namespace ClientXMLApp.Services
             await _context.SaveChangesAsync(cancellationToken);
 
             return client.ID;
-        }
-
-        public async Task<bool> UpdateClientAsync(UpdateClientDto clientDto, CancellationToken cancellationToken = default)
-        {
-            ArgumentNullException.ThrowIfNull(clientDto);
-
-            var client = await _context.Clients
-                .Include(c => c.Addresses)
-                .FirstOrDefaultAsync(c => c.ID == clientDto.ID, cancellationToken);
-
-            if (client == null)
-            {
-                return false;
-            }
-
-            _mapper.Map(clientDto, client);
-
-            // Clearing the tracked collection is what makes EF delete the removed rows.
-            client.Addresses.Clear();
-            foreach (var addressDto in clientDto.Addresses ?? new List<AddressDto>())
-            {
-                client.Addresses.Add(_mapper.Map<Address>(addressDto));
-            }
-
-            await _context.SaveChangesAsync(cancellationToken);
-
-            return true;
-        }
-
-        public async Task<bool> DeleteClientAsync(int id, CancellationToken cancellationToken = default)
-        {
-            // Addresses go with the client through the declared cascade.
-            var deleted = await _context.Clients
-                .Where(c => c.ID == id)
-                .ExecuteDeleteAsync(cancellationToken);
-
-            return deleted > 0;
         }
 
         public async Task AddClientsAsync(IEnumerable<AddClientDto> clientDtos, CancellationToken cancellationToken = default)

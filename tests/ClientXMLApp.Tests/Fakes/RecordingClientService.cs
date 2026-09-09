@@ -26,16 +26,7 @@ namespace ClientXMLApp.Tests.Fakes
             bool sortAscending = true,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public Task<ViewClientDto?> GetClientByIdAsync(int id, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
         public Task<int> AddClientAsync(AddClientDto clientDto, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<bool> UpdateClientAsync(UpdateClientDto clientDto, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-
-        public Task<bool> DeleteClientAsync(int id, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 }

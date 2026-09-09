@@ -51,11 +51,14 @@ with serialization attributes:
 | `Home address` (element body) | `XmlAddress.AddressText` | `[XmlText]` |
 | `<BirthDate>` | `XmlClient.BirthDate` (`DateTime?`) | by convention |
 
-`Name` and `BirthDate` need no attribute because the element names match the property names.
-`Type` is read as an integer and validated against the [AddressType](ClientXMLApp/Models/Address.cs)
-enum (`Unknown = 0`, `Home = 1`, `Public = 2`), so an unknown number is rejected rather than
-stored. `BirthDate` is nullable so a missing element stays distinguishable from a real date. The
-`ID` attribute is deserialized and then discarded, since keys come from the identity column.
+`Name` needs no attribute because the element name matches the property name. `Type` is parsed
+from the attribute text and must be a whole number naming an
+[AddressType](ClientXMLApp/Models/Address.cs) member (`Unknown = 0`, `Home = 1`, `Public = 2`);
+absent, non-numeric and out-of-range values are all rejected. `BirthDate` is read as text and
+parsed as `yyyy-MM-dd`, so a value carrying a time or an offset is refused rather than shifted
+into the server's timezone. Markup inside an `<Address>` body is refused as well, since
+`[XmlText]` would otherwise keep the last text node and drop the rest. The `ID` attribute is
+deserialized and then discarded, since keys come from the identity column.
 
 The page rejects an upload over 10 MB, then reads it as a `Stream` through an `XmlReader` with
 `DtdProcessing.Prohibit` and no resolver, so a document cannot pull in an external entity or
@@ -116,14 +119,16 @@ startup, and `Import XML` on the home page takes the sample file from the reposi
 dotnet test
 ```
 
-69 tests, about a second, and no SQL Server needed. They run against SQLite in memory rather than
+The suite runs in about a second and needs no SQL Server. It runs against SQLite in memory rather than
 the EF in-memory provider, because the behaviour under test belongs to the database: `ORDER BY`,
 `LIMIT`/`OFFSET`, cascade delete, identity keys.
 
-Two hooks make that checkable. A `SaveChanges` interceptor counts how many times the service
-saves, since a batch insert lands the same rows whether it saves once or once per client. A log
-callback captures the SQL EF sends, so a test can assert the ordering and the window are in the
-statement rather than applied in memory afterwards.
+Three hooks make that checkable. A `SaveChanges` interceptor counts how many times the service
+saves, since a batch insert lands the same rows whether it saves once or once per client. A
+command interceptor tracks data readers, so the export test can require that one is still open
+when the first client is yielded, which buffering the whole result would fail. A log callback
+captures the SQL EF sends, so a test can assert the ordering and the window are in the statement
+rather than applied in memory afterwards.
 
 The importer tests need no database at all, and cover the attribute mapping, a truncated
 document, a wrong root element, an unparseable date, a declared DTD, an entity pointing at a
@@ -137,8 +142,7 @@ have drifted apart.
 ## Scope and known limits
 
 A small demonstration build that wires one stack end to end. The surface is import, create,
-list, sort and export; update and delete exist in the service with tests and no page in front of
-them. Where it stops:
+list, sort and export. Where it stops:
 
 - Paging uses `OFFSET`/`FETCH` and every request counts the table. Both are cheap at this size
   and degrade on a large one, where keyset pagination and a cached count are the usual answers.
@@ -156,3 +160,8 @@ them. Where it stops:
   temporary file before the handler runs, so the framework's limits apply first.
 - Tests build their schema with `EnsureCreated()`, so the migrations are never executed by CI,
   and SQLite sorts with binary collation where SQL Server is case-insensitive.
+- The 10 MB upload cap is the page's own check and runs after the body has been buffered.
+  Kestrel's 30 MB limit trips first on a larger file, returning a bare 400 rather than the
+  friendly message.
+- There is no way to edit or remove a client. The listing, the form and the import are the whole
+  surface.

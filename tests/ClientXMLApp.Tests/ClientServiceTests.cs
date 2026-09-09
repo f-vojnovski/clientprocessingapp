@@ -312,78 +312,6 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
-        public async Task Deletes_addresses_through_the_declared_cascade()
-        {
-            Seed(("Alice", 1990));
-            int id;
-            using (var context = _db.NewContext())
-            {
-                id = await context.Clients.Select(c => c.ID).FirstAsync();
-            }
-
-            var deleted = await _db.NewService().DeleteClientAsync(id);
-
-            using var after = _db.NewContext();
-            Assert.True(deleted);
-            Assert.Equal(0, await after.Clients.CountAsync());
-            Assert.Equal(0, await after.Addresses.CountAsync());
-        }
-
-        [Fact]
-        public async Task Reports_a_missing_client_on_delete_without_throwing()
-        {
-            var deleted = await _db.NewService().DeleteClientAsync(4242);
-
-            Assert.False(deleted);
-        }
-
-        [Fact]
-        public async Task Reports_a_missing_client_on_update_without_throwing()
-        {
-            var updated = await _db.NewService().UpdateClientAsync(new UpdateClientDto
-            {
-                ID = 4242,
-                Name = "Nobody",
-                BirthDate = new DateTime(1990, 1, 1),
-                Addresses = new List<AddressDto>()
-            });
-
-            Assert.False(updated);
-        }
-
-        [Fact]
-        public async Task Replaces_the_address_set_on_update()
-        {
-            Seed(("Alice", 1990));
-            int id;
-            using (var context = _db.NewContext())
-            {
-                id = await context.Clients.Select(c => c.ID).FirstAsync();
-            }
-
-            var updated = await _db.NewService().UpdateClientAsync(new UpdateClientDto
-            {
-                ID = id,
-                Name = "Alice Renamed",
-                BirthDate = new DateTime(1991, 2, 3),
-                Addresses = new List<AddressDto>
-                {
-                    new AddressDto { AddressText = "Replacement address", Type = AddressType.Public }
-                }
-            });
-
-            using var after = _db.NewContext();
-            var client = await after.Clients.Include(c => c.Addresses).SingleAsync(c => c.ID == id);
-
-            Assert.True(updated);
-            Assert.Equal("Alice Renamed", client.Name);
-            Assert.Equal(new DateTime(1991, 2, 3), client.BirthDate);
-            Assert.Single(client.Addresses);
-            Assert.Equal("Replacement address", client.Addresses.First().AddressText);
-            Assert.Equal(1, await after.Addresses.CountAsync());
-        }
-
-        [Fact]
         public async Task Returns_every_client_for_the_export_in_sort_order()
         {
             Seed(("Zach", 1990), ("Alice", 1991));
@@ -435,10 +363,5 @@ namespace ClientXMLApp.Tests
             Assert.All(clients, client => Assert.Single(client.Addresses));
         }
 
-        [Fact]
-        public async Task Returns_null_for_a_client_that_does_not_exist()
-        {
-            Assert.Null(await _db.NewService().GetClientByIdAsync(4242));
-        }
     }
 }
