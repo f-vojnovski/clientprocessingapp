@@ -25,14 +25,17 @@ namespace ClientXMLApp.Services
             var normalized = query.Normalized();
             var totalCount = await _context.Clients.CountAsync(cancellationToken);
 
+            var lastPage = Math.Max(1, (int)Math.Ceiling(totalCount / (double)normalized.PageSize));
+            var pageNumber = Math.Min(normalized.PageNumber, lastPage);
+
             var clients = await Sorted(ReadOnlyClients(), normalized.SortBy, normalized.SortAscending)
-                .Skip((normalized.PageNumber - 1) * normalized.PageSize)
+                .Skip((pageNumber - 1) * normalized.PageSize)
                 .Take(normalized.PageSize)
                 .ToListAsync(cancellationToken);
 
             return new PagedResult<ViewClientDto>(
                 Map(clients),
-                normalized.PageNumber,
+                pageNumber,
                 normalized.PageSize,
                 totalCount);
         }

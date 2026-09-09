@@ -195,19 +195,47 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
-        public async Task A_page_number_past_the_end_returns_an_empty_page_rather_than_failing()
+        public async Task A_page_number_past_the_end_returns_the_last_page()
         {
-            Seed(("Alice", 1990), ("Bob", 1991));
+            Seed(("Alice", 1990), ("Bob", 1991), ("Cleo", 1992));
 
             var page = await _db.NewService().GetClientsAsync(new ClientQuery
             {
                 PageNumber = int.MaxValue,
-                PageSize = ClientQuery.MaxPageSize
+                PageSize = 2
             });
 
-            Assert.Empty(page.Items);
-            Assert.Equal(2, page.TotalCount);
+            Assert.Equal(2, page.PageNumber);
+            Assert.Equal(2, page.TotalPages);
+            Assert.Single(page.Items);
+            Assert.Equal("Cleo", page.Items[0].Name);
             Assert.False(page.HasNextPage);
+            Assert.True(page.HasPreviousPage);
+        }
+
+        [Theory]
+        [InlineData(1, 10)]
+        [InlineData(2, 2)]
+        [InlineData(99, 2)]
+        [InlineData(int.MaxValue, 200)]
+        [InlineData(0, 1)]
+        public async Task The_shown_range_never_reads_backwards(int pageNumber, int pageSize)
+        {
+            Seed(Enumerable.Range(1, 5).Select(i => ($"Client {i}", 1990)).ToArray());
+
+            var page = await _db.NewService().GetClientsAsync(new ClientQuery
+            {
+                PageNumber = pageNumber,
+                PageSize = pageSize
+            });
+
+            Assert.True(page.FirstItemOnPage <= page.LastItemOnPage,
+                $"range reads backwards: {page.FirstItemOnPage}-{page.LastItemOnPage}");
+            Assert.True(page.LastItemOnPage <= page.TotalCount,
+                $"last item {page.LastItemOnPage} exceeds total {page.TotalCount}");
+            Assert.True(page.PageNumber <= page.TotalPages,
+                $"page {page.PageNumber} of {page.TotalPages}");
+            Assert.Equal(page.Items.Count, page.LastItemOnPage - page.FirstItemOnPage + 1);
         }
 
         [Fact]
