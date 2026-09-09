@@ -111,9 +111,34 @@ namespace ClientXMLApp.Tests
         public void A_name_past_the_column_width_is_rejected()
         {
             var dto = ValidClient();
-            dto.Name = new string('a', Client.NameMaxLength + 1);
+            dto.Name = new string('a', 201);
 
             Assert.Contains("Name must be at most 200 characters long.", Validate(dto));
+        }
+
+        [Fact]
+        public void A_name_at_the_column_width_is_accepted()
+        {
+            var dto = ValidClient();
+            dto.Name = new string('a', 200);
+
+            Assert.Empty(Validate(dto));
+        }
+
+        [Fact]
+        public void An_address_text_past_the_column_width_is_rejected()
+        {
+            var dto = new AddressDto { AddressText = new string('a', 401), Type = AddressType.Home };
+
+            Assert.Contains("Address text must be at most 400 characters long.", Validate(dto));
+        }
+
+        [Fact]
+        public void An_address_text_at_the_column_width_is_accepted()
+        {
+            var dto = new AddressDto { AddressText = new string('a', 400), Type = AddressType.Home };
+
+            Assert.Empty(Validate(dto));
         }
     }
 }

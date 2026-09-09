@@ -31,6 +31,24 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task An_empty_table_reports_a_coherent_first_page()
+        {
+            var page = await _db.NewService().GetClientsAsync(new ClientQuery
+            {
+                PageNumber = 5,
+                PageSize = 20
+            });
+
+            Assert.Empty(page.Items);
+            Assert.Equal(0, page.TotalCount);
+            Assert.Equal(1, page.PageNumber);
+            Assert.False(page.HasPreviousPage);
+            Assert.False(page.HasNextPage);
+            Assert.Equal(0, page.FirstItemOnPage);
+            Assert.Equal(0, page.LastItemOnPage);
+        }
+
+        [Fact]
         public async Task Sorts_in_the_database_rather_than_after_paging()
         {
             // Sorting the page in memory returns Alice and Bob; sorting in SQL returns Zach
@@ -71,7 +89,12 @@ namespace ClientXMLApp.Tests
             Assert.NotEmpty(paged);
             Assert.All(paged, sql =>
             {
-                Assert.Contains("ORDER BY", sql);
+                // EF orders by the key for any Skip/Take, so the sort column has to be named:
+                // asserting on the words ORDER BY alone passes with no sort applied at all.
+                var orderBy = sql.IndexOf("ORDER BY", StringComparison.Ordinal);
+
+                Assert.True(orderBy >= 0, $"no ORDER BY in: {sql}");
+                Assert.Contains("\"Name\"", sql.Substring(orderBy));
                 Assert.Contains("OFFSET", sql);
             });
         }

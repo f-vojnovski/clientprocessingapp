@@ -25,6 +25,11 @@ namespace ClientXMLApp.Pages.Clients
 
         public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
         {
+            if (!Request.HasFormContentType)
+            {
+                return BadRequest();
+            }
+
             Client.Addresses ??= new List<AddressDto>();
 
             // The collection binder stops at the first missing index, so a gap in the posted

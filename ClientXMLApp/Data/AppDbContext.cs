@@ -14,20 +14,6 @@ namespace ClientXMLApp.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Client>()
-                            .HasKey(c => c.ID);
-
-            modelBuilder.Entity<Client>()
-                .Property(c => c.ID)
-                .ValueGeneratedOnAdd();
-
-            modelBuilder.Entity<Address>()
-                .HasKey(a => a.ID);
-
-            modelBuilder.Entity<Address>()
-                .Property(a => a.ID)
-                .ValueGeneratedOnAdd();
-
             modelBuilder.Entity<Client>().HasIndex(c => c.Name);
             modelBuilder.Entity<Client>().HasIndex(c => c.BirthDate);
 
