@@ -5,10 +5,16 @@ namespace ClientXMLApp.Services.DTOs
 {
     public class AddressDto
     {
+        private string _addressText = string.Empty;
+
         [Required(ErrorMessage = "Address text is required.")]
         [MinLength(5, ErrorMessage = "Address text must be at least 5 characters long.")]
         [MaxLength(Address.AddressTextMaxLength, ErrorMessage = "Address text must be at most 400 characters long.")]
-        public string AddressText { get; set; } = string.Empty;
+        public string AddressText
+        {
+            get => _addressText;
+            set => _addressText = (value ?? string.Empty).Trim();
+        }
 
         [Required(ErrorMessage = "Address type is required.")]
         [EnumDataType(typeof(AddressType), ErrorMessage = "Address type is not a known value.")]

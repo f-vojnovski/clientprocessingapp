@@ -355,6 +355,63 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task Keeps_a_rejection_short_when_the_type_attribute_is_enormous()
+        {
+            var attribute = new string('x', 24_000);
+            using var stream = StreamOf($@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""{attribute}"">Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("is not a whole number", ex.Message);
+            Assert.True(ex.Message.Length < 300, $"message was {ex.Message.Length} characters long");
+        }
+
+        [Fact]
+        public async Task Trims_an_address_body_that_is_spread_over_lines()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses>
+            <Address Type=""1"">
+                Home address
+            </Address>
+        </Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var imported = await CreateService().ImportClientsAsync(stream);
+
+            Assert.Equal(1, imported);
+            Assert.Equal("Home address", _clientService.LastBatch[0].Addresses[0].AddressText);
+        }
+
+        [Theory]
+        [InlineData("abc")]
+        [InlineData("99999999999")]
+        [InlineData("")]
+        public async Task Imports_a_record_whose_id_attribute_is_not_a_number(string id)
+        {
+            using var stream = StreamOf($@"<Clients>
+    <Client ID=""{id}""><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var imported = await CreateService().ImportClientsAsync(stream);
+
+            Assert.Equal(1, imported);
+            Assert.Equal("Ime1", _clientService.LastBatch[0].Name);
+        }
+
+        [Fact]
         public async Task Gives_one_reason_for_an_address_with_no_type()
         {
             using var stream = StreamOf(@"<Clients>

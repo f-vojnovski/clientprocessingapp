@@ -5,10 +5,16 @@ namespace ClientXMLApp.Services.DTOs
 {
     public class AddClientDto
     {
+        private string _name = string.Empty;
+
         [Required(ErrorMessage = "Name is required.")]
         [MinLength(3, ErrorMessage = "Name must be at least 3 characters long.")]
         [MaxLength(Client.NameMaxLength, ErrorMessage = "Name must be at most 200 characters long.")]
-        public string Name { get; set; } = string.Empty;
+        public string Name
+        {
+            get => _name;
+            set => _name = (value ?? string.Empty).Trim();
+        }
 
         [Required(ErrorMessage = "Birthdate is required.")]
         [DataType(DataType.Date)]

@@ -13,7 +13,7 @@ namespace ClientXMLApp.Services.DTOs
     public class XmlClient
     {
         [XmlAttribute("ID")]
-        public int ID { get; set; }
+        public string? ID { get; set; }
 
         public string Name { get; set; } = string.Empty;
 

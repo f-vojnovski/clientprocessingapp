@@ -51,6 +51,23 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public void Padding_does_not_count_towards_the_name_minimum()
+        {
+            var dto = ValidClient();
+            dto.Name = "  a  ";
+
+            Assert.Contains("Name must be at least 3 characters long.", Validate(dto));
+        }
+
+        [Fact]
+        public void Padding_does_not_count_towards_the_address_text_minimum()
+        {
+            var dto = new AddressDto { AddressText = "  Ho  ", Type = AddressType.Home };
+
+            Assert.Contains("Address text must be at least 5 characters long.", Validate(dto));
+        }
+
+        [Fact]
         public void An_address_with_no_type_is_rejected()
         {
             var dto = ValidClient();

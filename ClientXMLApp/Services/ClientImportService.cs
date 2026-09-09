@@ -11,6 +11,11 @@ namespace ClientXMLApp.Services
     {
         private const int MaxReportedFailures = 10;
 
+        // A rejection message is handed back through TempData, which is a cookie. Echoing an
+        // attribute at its posted length fills the request headers and Kestrel then refuses
+        // every later request with a 431 before the app can clear the cookie.
+        private const int MaxEchoedLength = 40;
+
         private const string MalformedMessage =
             "The file could not be read as a client XML document. Check that it is well-formed XML with a <Clients> root element.";
 
@@ -129,9 +134,18 @@ namespace ClientXMLApp.Services
                 return (AddressType)parsed;
             }
 
-            failures.Add(position, $"an address Type of '{value}' is not a whole number.");
+            failures.Add(position, $"an address Type of '{Excerpt(value)}' is not a whole number.");
 
             return null;
+        }
+
+        private static string Excerpt(string value)
+        {
+            var trimmed = value.Trim();
+
+            return trimmed.Length <= MaxEchoedLength
+                ? trimmed
+                : trimmed.Substring(0, MaxEchoedLength) + "...";
         }
 
         private static DateTime? ParseBirthDate(string? value, int position, FailureLog failures)
