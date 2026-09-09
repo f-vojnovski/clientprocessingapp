@@ -337,6 +337,40 @@ namespace ClientXMLApp.Tests
             Assert.Equal("Home  address", _clientService.LastBatch[0].Addresses[0].AddressText);
         }
 
+        [Fact]
+        public async Task Gives_one_reason_for_a_birth_date_it_cannot_read()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>2001-9-1</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains($"must be a date in {CalendarDate.Format} form", ex.Message);
+            Assert.DoesNotContain("Birthdate is required", ex.Message);
+        }
+
+        [Fact]
+        public async Task Gives_one_reason_for_an_address_with_no_type()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address>Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("missing its Type attribute", ex.Message);
+            Assert.DoesNotContain("Address type is required", ex.Message);
+        }
+
         [Theory]
         [InlineData("2001-09-02T01:00:00+05:00")]
         [InlineData("2001-09-02T01:00:00Z")]

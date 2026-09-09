@@ -36,6 +36,13 @@ namespace ClientXMLApp.Pages.Clients
                     "Some addresses could not be read. Please re-enter them and submit again.");
             }
 
+            if (!PostedBirthDateIsACalendarDate())
+            {
+                ModelState.AddModelError(
+                    "Client.BirthDate",
+                    $"Birthdate must be a date in {CalendarDate.Format} form.");
+            }
+
             if (!ModelState.IsValid)
             {
                 return Page();
@@ -44,6 +51,13 @@ namespace ClientXMLApp.Pages.Clients
             await _clientService.AddClientAsync(Client, cancellationToken);
 
             return RedirectToPage("/Clients/View");
+        }
+
+        private bool PostedBirthDateIsACalendarDate()
+        {
+            var posted = Request.Form["Client.BirthDate"].ToString();
+
+            return string.IsNullOrWhiteSpace(posted) || CalendarDate.TryParse(posted, out _);
         }
 
         private int PostedAddressCount()

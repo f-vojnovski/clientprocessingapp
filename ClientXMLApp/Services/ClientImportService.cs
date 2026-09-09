@@ -1,4 +1,4 @@
-using ClientXMLApp.Models;
+﻿using ClientXMLApp.Models;
 using ClientXMLApp.Services.DTOs;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
@@ -104,7 +104,7 @@ namespace ClientXMLApp.Services
         {
             if (xmlAddress.UnexpectedContent?.Length > 0)
             {
-                failures.Add($"Client {position}: an address contains markup, which is not allowed.");
+                failures.Add(position, "an address contains markup, which is not allowed.");
             }
 
             return new AddressDto
@@ -114,13 +114,13 @@ namespace ClientXMLApp.Services
             };
         }
 
-        private static AddressType ParseAddressType(string? value, int position, FailureLog failures)
+        private static AddressType? ParseAddressType(string? value, int position, FailureLog failures)
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                failures.Add($"Client {position}: an address is missing its Type attribute.");
+                failures.Add(position, "an address is missing its Type attribute.");
 
-                return AddressType.Unknown;
+                return null;
             }
 
             if (int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
@@ -129,15 +129,11 @@ namespace ClientXMLApp.Services
                 return (AddressType)parsed;
             }
 
-            failures.Add($"Client {position}: an address Type of '{value}' is not a whole number.");
+            failures.Add(position, $"an address Type of '{value}' is not a whole number.");
 
-            return AddressType.Unknown;
+            return null;
         }
 
-        /// <summary>
-        /// Only a plain calendar date is accepted. A value carrying a time or an offset would
-        /// otherwise be shifted into the server's local time and land on a different day.
-        /// </summary>
         private static DateTime? ParseBirthDate(string? value, int position, FailureLog failures)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -145,17 +141,12 @@ namespace ClientXMLApp.Services
                 return null;
             }
 
-            if (DateTime.TryParseExact(
-                    value.Trim(),
-                    "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var parsed))
+            if (CalendarDate.TryParse(value, out var parsed))
             {
                 return parsed;
             }
 
-            failures.Add($"Client {position}: BirthDate must be a date in yyyy-MM-dd form.");
+            failures.Add(position, $"BirthDate must be a date in {CalendarDate.Format} form.");
 
             return null;
         }
@@ -167,12 +158,17 @@ namespace ClientXMLApp.Services
                 var clientDto = clientDtos[i];
                 var position = i + 1;
 
+                if (failures.Mentions(position))
+                {
+                    continue;
+                }
+
                 var errors = ValidationErrors(clientDto)
                     .Concat(clientDto.Addresses.SelectMany(ValidationErrors));
 
                 foreach (var error in errors)
                 {
-                    failures.Add($"Client {position}: {error}");
+                    failures.Add(position, error);
                 }
             }
         }
@@ -180,18 +176,22 @@ namespace ClientXMLApp.Services
         private sealed class FailureLog
         {
             private readonly List<string> _reported = new List<string>();
+            private readonly HashSet<int> _positions = new HashSet<int>();
 
             public int Total { get; private set; }
 
-            public void Add(string failure)
+            public void Add(int position, string problem)
             {
                 Total++;
+                _positions.Add(position);
 
                 if (_reported.Count < MaxReportedFailures)
                 {
-                    _reported.Add(failure);
+                    _reported.Add($"Client {position}: {problem}");
                 }
             }
+
+            public bool Mentions(int position) => _positions.Contains(position);
 
             public string Describe()
             {

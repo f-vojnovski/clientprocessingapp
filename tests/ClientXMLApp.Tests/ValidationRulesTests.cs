@@ -50,6 +50,15 @@ namespace ClientXMLApp.Tests
             Assert.Contains("Birthdate is required.", Validate(dto));
         }
 
+        [Fact]
+        public void An_address_with_no_type_is_rejected()
+        {
+            var dto = ValidClient();
+            dto.Addresses[0].Type = null;
+
+            Assert.Contains("Address type is required.", Validate(dto.Addresses[0]));
+        }
+
         [Theory]
         [InlineData(3)]
         [InlineData(9)]

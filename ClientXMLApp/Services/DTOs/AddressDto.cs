@@ -10,7 +10,8 @@ namespace ClientXMLApp.Services.DTOs
         [MaxLength(Address.AddressTextMaxLength, ErrorMessage = "Address text must be at most 400 characters long.")]
         public string AddressText { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Address type is required.")]
         [EnumDataType(typeof(AddressType), ErrorMessage = "Address type is not a known value.")]
-        public AddressType Type { get; set; }
+        public AddressType? Type { get; set; }
     }
 }
