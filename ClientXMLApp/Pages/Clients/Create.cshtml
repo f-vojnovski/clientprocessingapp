@@ -106,22 +106,5 @@
             row.parentNode.removeChild(row);
             renumberAddressRows();
         });
-
-        const form = document.getElementById('clientForm');
-        const submitButton = document.getElementById('submitButton');
-
-        form.addEventListener('submit', function (event) {
-            if (!form.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            form.classList.add('was-validated');
-        }, false);
-
-        form.addEventListener('input', function () {
-            submitButton.disabled = !form.checkValidity();
-        });
-
-        submitButton.disabled = !form.checkValidity();
     </script>
 }
