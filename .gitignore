@@ -1,61 +1,34 @@
-# .NET
-*.dll
-*.exe
-*.pdb
-*.cache
-*.log
-*.user
-*.vs
-*.vscode
-*.suo
-*.swp
-*.ncb
-*.suo
-*.log
-*.dmp
-*.sql
-*.sqlite
-*.db
-
-# ASP.NET Core
-wwwroot/
-node_modules/
-*.js
-*.map
-*.ts
-*.json
-*.yarn
-*.npm
-
-# Visual Studio
-.vs/
-*.user
-*.suo
-*.sln.docstates
-
-# Rider
-.idea/
-
-# Mac
-.DS_Store
-
-# Windows
-Thumbs.db
-Desktop.ini
-
-# Entity Framework Core
-*.sqlite
-*.db
-*.bak
-*.sql
-*.log
-
-# Build Results
+# Build output
 bin/
 obj/
 
-# NuGet
+# IDE and editor state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln.docstates
+*.swp
+
+# Source maps for vendored client libraries
+*.map
+
+# Packages
+node_modules/
+packages/
+.nuget/
 *.nupkg
 *.snupkg
-.nuget/
-packages/
+
+# Local databases, dumps and logs
+*.db
+*.sqlite
+*.bak
+*.dmp
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
