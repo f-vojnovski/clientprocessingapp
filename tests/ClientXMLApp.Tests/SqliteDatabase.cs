@@ -5,6 +5,7 @@ using ClientXMLApp.Tests.Fakes;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ClientXMLApp.Tests
 {
@@ -38,7 +39,7 @@ namespace ClientXMLApp.Tests
             using var context = new AppDbContext(_options);
             context.Database.EnsureCreated();
 
-            Mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>()).CreateMapper();
+            Mapper = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>(), NullLoggerFactory.Instance).CreateMapper();
         }
 
         public SaveChangesCounter SaveChanges { get; }

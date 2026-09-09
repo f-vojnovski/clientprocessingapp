@@ -1,5 +1,6 @@
 using AutoMapper;
 using ClientXMLApp.Services;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ClientXMLApp.Tests
 {
@@ -10,7 +11,7 @@ namespace ClientXMLApp.Tests
         {
             // AutoMapper only surfaces an unmapped pair when that map first runs, which is how a
             // missing UpdateClientDto mapping sat behind an uncalled method.
-            var configuration = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
+            var configuration = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>(), NullLoggerFactory.Instance);
 
             configuration.AssertConfigurationIsValid();
         }
