@@ -191,6 +191,42 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task Rejects_a_client_with_no_birth_date()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("Birthdate is required", ex.Message);
+            Assert.Empty(_clientService.Batches);
+        }
+
+        [Theory]
+        [InlineData("3")]
+        [InlineData("9")]
+        [InlineData("-4")]
+        public async Task Rejects_an_address_type_outside_the_enum(string type)
+        {
+            using var stream = StreamOf($@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""{type}"">Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("Address type is not a known value", ex.Message);
+            Assert.Empty(_clientService.Batches);
+        }
+
+        [Fact]
         public async Task Imports_the_sample_file_that_ships_with_the_repository()
         {
             await using var file = File.OpenRead("client_import_example.xml");

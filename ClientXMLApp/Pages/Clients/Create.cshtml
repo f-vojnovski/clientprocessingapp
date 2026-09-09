@@ -7,6 +7,7 @@
 <h2>Add New Client</h2>
 
 <form method="post" id="clientForm">
+    <div asp-validation-summary="All" class="text-danger"></div>
     <div class="form-group">
         <label asp-for="Client.Name"></label>
         <input asp-for="Client.Name" class="form-control" />

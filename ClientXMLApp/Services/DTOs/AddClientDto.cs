@@ -12,9 +12,10 @@ namespace ClientXMLApp.Services.DTOs
 
         [Required(ErrorMessage = "Birthdate is required.")]
         [DataType(DataType.Date)]
-        public DateTime BirthDate { get; set; }
+        public DateTime? BirthDate { get; set; }
 
         [Required(ErrorMessage = "At least one address is required.")]
+        [MinLength(1, ErrorMessage = "At least one address is required.")]
         public List<AddressDto> Addresses { get; set; } = new List<AddressDto>();
     }
 }

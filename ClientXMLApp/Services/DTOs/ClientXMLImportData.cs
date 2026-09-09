@@ -20,7 +20,7 @@ namespace ClientXMLApp.Services.DTOs
         [XmlArrayItem("Address")]
         public List<XmlAddress> Addresses { get; set; } = new List<XmlAddress>();
 
-        public DateTime BirthDate { get; set; }
+        public DateTime? BirthDate { get; set; }
     }
 
     public class XmlAddress
