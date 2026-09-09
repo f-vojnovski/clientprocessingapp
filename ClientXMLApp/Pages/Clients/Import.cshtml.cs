@@ -7,6 +7,8 @@ namespace ClientXMLApp.Pages.Clients
     public class ImportModel : PageModel
     {
         private const long MaxUploadBytes = 10 * 1024 * 1024;
+        private const string ImportedCountKey = "ImportedCount";
+        private const string ErrorMessageKey = "ImportError";
 
         private readonly IClientImportService _importService;
         private readonly ILogger<ImportModel> _logger;
@@ -27,34 +29,45 @@ namespace ClientXMLApp.Pages.Clients
 
         public void OnGet()
         {
+            if (TempData[ImportedCountKey] is int importedCount)
+            {
+                ImportedCount = importedCount;
+            }
+
+            ErrorMessage = TempData[ErrorMessageKey] as string;
         }
 
         public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
         {
             if (XmlFile == null || XmlFile.Length == 0)
             {
-                ErrorMessage = "Choose an XML file to import.";
-                return Page();
+                return Rejected("Choose an XML file to import.");
             }
 
             if (XmlFile.Length > MaxUploadBytes)
             {
-                ErrorMessage = $"That file is larger than the {MaxUploadBytes / (1024 * 1024)} MB limit.";
-                return Page();
+                return Rejected($"That file is larger than the {MaxUploadBytes / (1024 * 1024)} MB limit.");
             }
 
             try
             {
                 await using var stream = XmlFile.OpenReadStream();
-                ImportedCount = await _importService.ImportClientsAsync(stream, cancellationToken);
+                TempData[ImportedCountKey] = await _importService.ImportClientsAsync(stream, cancellationToken);
             }
             catch (ClientImportException ex)
             {
                 _logger.LogWarning(ex, "Rejected client import from {FileName}", XmlFile.FileName);
-                ErrorMessage = ex.Message;
+                return Rejected(ex.Message);
             }
 
-            return Page();
+            return RedirectToPage();
+        }
+
+        private IActionResult Rejected(string message)
+        {
+            TempData[ErrorMessageKey] = message;
+
+            return RedirectToPage();
         }
     }
 }
