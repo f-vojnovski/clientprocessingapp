@@ -56,8 +56,9 @@ from the attribute text and must be a whole number naming an
 [AddressType](ClientXMLApp/Models/Address.cs) member (`Unknown = 0`, `Home = 1`, `Public = 2`);
 absent, non-numeric and out-of-range values are all rejected. `BirthDate` is read as text and
 parsed as `yyyy-MM-dd`, so a value carrying a time or an offset is refused rather than shifted
-into the server's timezone. Markup inside an `<Address>` body is refused as well, since
-`[XmlText]` would otherwise keep the last text node and drop the rest. The `ID` attribute is
+into the server's timezone. An `<Address>` body has to be text: a child element is refused, and a
+comment or a processing instruction is stripped before binding, since `[XmlText]` keeps only the
+last text node and would otherwise drop the text in front of it. The `ID` attribute is
 deserialized and then discarded, since keys come from the identity column.
 
 The page rejects an upload over 10 MB, then reads it as a `Stream` through an `XmlReader` with

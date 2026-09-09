@@ -17,11 +17,15 @@ namespace ClientXMLApp.Services
         private static readonly XmlSerializer Serializer = new XmlSerializer(typeof(XmlClientList));
 
         // Untrusted input: no DTD, no external entity resolution.
+        // Comments and processing instructions are dropped before binding: [XmlText] keeps only
+        // the last text node, so one mid-body comment would discard the text in front of it.
         private static readonly XmlReaderSettings ReaderSettings = new XmlReaderSettings
         {
             DtdProcessing = DtdProcessing.Prohibit,
             XmlResolver = null,
-            CloseInput = false
+            CloseInput = false,
+            IgnoreComments = true,
+            IgnoreProcessingInstructions = true
         };
 
         private readonly IClientService _clientService;

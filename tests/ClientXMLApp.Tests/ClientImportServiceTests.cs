@@ -320,6 +320,24 @@ namespace ClientXMLApp.Tests
         }
 
         [Theory]
+        [InlineData("Home <!--note--> address")]
+        [InlineData("Home <?order 1?> address")]
+        public async Task Keeps_an_address_body_split_by_a_comment_or_an_instruction(string body)
+        {
+            using var stream = StreamOf($@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">{body}</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var imported = await CreateService().ImportClientsAsync(stream);
+
+            Assert.Equal(1, imported);
+            Assert.Equal("Home  address", _clientService.LastBatch[0].Addresses[0].AddressText);
+        }
+
+        [Theory]
         [InlineData("2001-09-02T01:00:00+05:00")]
         [InlineData("2001-09-02T01:00:00Z")]
         [InlineData("02/09/2001")]
