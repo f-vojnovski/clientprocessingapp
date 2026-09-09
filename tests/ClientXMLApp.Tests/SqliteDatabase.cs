@@ -30,9 +30,10 @@ namespace ClientXMLApp.Tests
             }
 
             SaveChanges = new SaveChangesCounter();
+            Readers = new DataReaderTracker();
             _options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseSqlite(_connection)
-                .AddInterceptors(SaveChanges)
+                .AddInterceptors(SaveChanges, Readers)
                 .LogTo(Sql.Add, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information)
                 .Options;
 
@@ -43,6 +44,8 @@ namespace ClientXMLApp.Tests
         }
 
         public SaveChangesCounter SaveChanges { get; }
+
+        public DataReaderTracker Readers { get; }
 
         public IMapper Mapper { get; }
 

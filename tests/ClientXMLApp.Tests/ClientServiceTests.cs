@@ -403,13 +403,13 @@ namespace ClientXMLApp.Tests
         {
             Seed(Enumerable.Range(1, 40).Select(i => ($"Client {i:00}", 1990)).ToArray());
 
-            var seenBeforeFirstYield = 0;
+            var readersOpenAtFirstYield = -1;
             var yielded = 0;
             await foreach (var client in _db.NewService().StreamAllClientsAsync())
             {
                 if (yielded == 0)
                 {
-                    seenBeforeFirstYield = _db.Sql.Count;
+                    readersOpenAtFirstYield = _db.Readers.Open;
                 }
 
                 yielded++;
@@ -417,7 +417,8 @@ namespace ClientXMLApp.Tests
             }
 
             Assert.Equal(40, yielded);
-            Assert.True(seenBeforeFirstYield > 0, "no command was sent before the first row arrived");
+            Assert.Equal(1, readersOpenAtFirstYield);
+            Assert.Equal(0, _db.Readers.Open);
         }
 
         [Fact]
