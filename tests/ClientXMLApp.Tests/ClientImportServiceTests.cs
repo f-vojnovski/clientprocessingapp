@@ -159,9 +159,8 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
-        public async Task Holds_imported_records_to_the_same_rules_as_the_create_form()
+        public async Task Rejects_a_name_shorter_than_the_minimum()
         {
-            // Two characters is below the minimum length on AddClientDto.Name.
             const string shortName = @"<Clients>
     <Client><Name>Im</Name>
         <Addresses><Address Type=""1"">Home address</Address></Addresses>

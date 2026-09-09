@@ -222,7 +222,7 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
-        public async Task Writes_a_whole_batch_in_one_round_trip()
+        public async Task Writes_a_whole_batch_with_a_single_save()
         {
             var batch = Enumerable.Range(1, 5).Select(i => new AddClientDto
             {
@@ -266,7 +266,7 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
-        public async Task Writes_one_client_in_one_round_trip()
+        public async Task Writes_one_client_with_a_single_save()
         {
             var before = _db.SaveChanges.Count;
 

@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace ClientXMLApp.Tests.Fakes
 {
-    // The rows land either way, so only the round trip count shows a batch insert is one save.
     public class SaveChangesCounter : SaveChangesInterceptor
     {
         public int Count { get; private set; }
