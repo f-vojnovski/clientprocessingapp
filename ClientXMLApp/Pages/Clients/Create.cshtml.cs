@@ -25,14 +25,16 @@ namespace ClientXMLApp.Pages.Client
         {
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
         {
+            Client.Addresses ??= new List<AddressDto>();
+
             if (!ModelState.IsValid)
             {
                 return Page();
             }
 
-            await _clientService.AddClientAsync(Client);
+            await _clientService.AddClientAsync(Client, cancellationToken);
 
             return RedirectToPage("/Clients/View");
         }
