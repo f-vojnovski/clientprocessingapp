@@ -71,7 +71,11 @@ namespace ClientXMLApp.Tests
         [Fact]
         public async Task Rejects_a_null_stream()
         {
-            await Assert.ThrowsAsync<ArgumentNullException>(() => CreateService().ImportClientsAsync(null!));
+            var ex = await Assert.ThrowsAsync<ArgumentNullException>(
+                () => CreateService().ImportClientsAsync(null!));
+
+            // Without the guard the reader throws this too, but names its own parameter.
+            Assert.Equal("xmlStream", ex.ParamName);
         }
 
         [Theory]
@@ -93,14 +97,53 @@ namespace ClientXMLApp.Tests
         [Fact]
         public async Task Rejects_a_document_that_declares_a_dtd()
         {
+            // Everything but the DOCTYPE is valid, so only the reader settings decide the
+            // outcome. An unhardened reader expands the entity and the import succeeds.
             const string withDtd = @"<?xml version=""1.0""?>
-<!DOCTYPE Clients [<!ENTITY payload ""expanded"">]>
-<Clients><Client><Name>&payload;</Name></Client></Clients>";
+<!DOCTYPE Clients [<!ENTITY payload ""Ime1"">]>
+<Clients>
+    <Client><Name>&payload;</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>";
             using var stream = StreamOf(withDtd);
 
-            await Assert.ThrowsAsync<ClientImportException>(() => CreateService().ImportClientsAsync(stream));
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
 
+            Assert.Contains("could not be read", ex.Message);
             Assert.Empty(_clientService.Batches);
+        }
+
+        [Fact]
+        public async Task Rejects_a_document_that_pulls_in_an_external_entity()
+        {
+            var secret = Path.Combine(Path.GetTempPath(), $"xxe-{Guid.NewGuid():N}.txt");
+            await File.WriteAllTextAsync(secret, "LeakedFileContents");
+            try
+            {
+                var withExternalEntity = $@"<?xml version=""1.0""?>
+<!DOCTYPE Clients [<!ENTITY payload SYSTEM ""file:///{secret.Replace("\\", "/")}"">]>
+<Clients>
+    <Client><Name>&payload;</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>";
+                using var stream = StreamOf(withExternalEntity);
+
+                var ex = await Assert.ThrowsAsync<ClientImportException>(
+                    () => CreateService().ImportClientsAsync(stream));
+
+                Assert.Contains("could not be read", ex.Message);
+                Assert.Empty(_clientService.Batches);
+                Assert.DoesNotContain("LeakedFileContents", ex.Message);
+            }
+            finally
+            {
+                File.Delete(secret);
+            }
         }
 
         [Fact]
