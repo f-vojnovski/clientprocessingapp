@@ -17,8 +17,6 @@ namespace ClientXMLApp.Pages.Clients
         {
             _clientService = clientService;
             Client = new AddClientDto();
-            Client.Addresses = new List<AddressDto>();
-            Client.BirthDate = DateTime.Now;
         }
 
         public void OnGet()
@@ -29,6 +27,15 @@ namespace ClientXMLApp.Pages.Clients
         {
             Client.Addresses ??= new List<AddressDto>();
 
+            // The collection binder stops at the first missing index, so a gap in the posted
+            // names would drop every address after it without failing.
+            if (PostedAddressCount() != Client.Addresses.Count)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    "Some addresses could not be read. Please re-enter them and submit again.");
+            }
+
             if (!ModelState.IsValid)
             {
                 return Page();
@@ -37,6 +44,29 @@ namespace ClientXMLApp.Pages.Clients
             await _clientService.AddClientAsync(Client, cancellationToken);
 
             return RedirectToPage("/Clients/View");
+        }
+
+        private int PostedAddressCount()
+        {
+            const string prefix = "Client.Addresses[";
+            var indexes = new HashSet<int>();
+
+            foreach (var key in Request.Form.Keys)
+            {
+                if (!key.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var end = key.IndexOf(']', prefix.Length);
+                if (end > prefix.Length
+                    && int.TryParse(key.AsSpan(prefix.Length, end - prefix.Length), out var index))
+                {
+                    indexes.Add(index);
+                }
+            }
+
+            return indexes.Count;
         }
 
         public AddressType[] AddressTypes => (AddressType[])Enum.GetValues(typeof(AddressType));

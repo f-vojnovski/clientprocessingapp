@@ -62,6 +62,19 @@
     <script>
         const addressBody = document.getElementById('addressTable').getElementsByTagName('tbody')[0];
 
+        // Rules are cached per form, so a form that has already been parsed ignores fields
+        // added later unless the cache is dropped first.
+        function reparseValidation() {
+            const $ = window.jQuery;
+            if (!$ || !$.validator || !$.validator.unobtrusive) {
+                return;
+            }
+
+            const form = $('#clientForm');
+            form.removeData('validator').removeData('unobtrusiveValidation');
+            $.validator.unobtrusive.parse(form);
+        }
+
         function renumberAddressRows() {
             Array.prototype.forEach.call(addressBody.rows, function (row, index) {
                 const prefix = 'Client.Addresses[' + index + ']';
@@ -79,8 +92,16 @@
             const row = addressBody.insertRow(addressBody.rows.length);
             row.innerHTML = `
                 <td>
-                    <input name="Client.Addresses[0].AddressText" class="form-control" />
-                    <span class="text-danger"></span>
+                    <input name="Client.Addresses[0].AddressText" class="form-control"
+                           maxlength="@ClientXMLApp.Models.Address.AddressTextMaxLength"
+                           data-val="true"
+                           data-val-required="Address text is required."
+                           data-val-minlength="Address text must be at least 5 characters long."
+                           data-val-minlength-min="5"
+                           data-val-maxlength="Address text must be at most @ClientXMLApp.Models.Address.AddressTextMaxLength characters long."
+                           data-val-maxlength-max="@ClientXMLApp.Models.Address.AddressTextMaxLength" />
+                    <span class="text-danger" data-valmsg-replace="true"
+                          data-valmsg-for="Client.Addresses[0].AddressText"></span>
                 </td>
                 <td>
                     <select name="Client.Addresses[0].Type" class="form-control">
@@ -95,6 +116,8 @@
                     <button type="button" class="btn btn-danger remove-address">Remove</button>
                 </td>`;
             renumberAddressRows();
+
+            reparseValidation();
         });
 
         addressBody.addEventListener('click', function (event) {
@@ -105,6 +128,7 @@
             const row = event.target.closest('tr');
             row.parentNode.removeChild(row);
             renumberAddressRows();
+            reparseValidation();
         });
     </script>
 }
