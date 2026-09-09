@@ -9,8 +9,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ClientXMLApp.Tests
 {
-    // SQLite rather than the in-memory provider: these tests are about ORDER BY, LIMIT/OFFSET,
-    // cascade delete and identity keys, none of which the in-memory provider implements.
+    // SQLite rather than the in-memory provider: these tests are about ORDER BY, LIMIT/OFFSET
+    // and identity keys, none of which the in-memory provider implements.
     public sealed class SqliteDatabase : IDisposable
     {
         private readonly SqliteConnection _connection;
@@ -24,7 +24,7 @@ namespace ClientXMLApp.Tests
 
             using (var command = _connection.CreateCommand())
             {
-                // SQLite only honours declared cascades when this is on.
+                // SQLite ignores declared foreign keys unless this is on.
                 command.CommandText = "PRAGMA foreign_keys = ON;";
                 command.ExecuteNonQuery();
             }

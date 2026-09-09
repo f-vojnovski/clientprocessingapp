@@ -43,23 +43,26 @@ with serialization attributes:
 | --- | --- | --- |
 | `<Clients>` document root | `XmlClientList` | `[XmlRoot("Clients")]` |
 | repeated `<Client>` | `XmlClientList.Clients` | `[XmlElement("Client")]` |
-| `ID="12345"` | `XmlClient.ID` (`int`) | `[XmlAttribute("ID")]` |
+| `ID="12345"` | `XmlClient.ID` (`string?`) | `[XmlAttribute("ID")]` |
 | `<Name>` | `XmlClient.Name` | by convention |
 | `<Addresses>` wrapper | `XmlClient.Addresses` | `[XmlArray("Addresses")]` |
 | each `<Address>` | list item | `[XmlArrayItem("Address")]` |
-| `Type="1"` | `XmlAddress.Type` (`int`) | `[XmlAttribute("Type")]` |
+| `Type="1"` | `XmlAddress.Type` (`string?`) | `[XmlAttribute("Type")]` |
 | `Home address` (element body) | `XmlAddress.AddressText` | `[XmlText]` |
-| `<BirthDate>` | `XmlClient.BirthDate` (`DateTime?`) | by convention |
+| `<BirthDate>` | `XmlClient.BirthDate` (`string?`) | `[XmlElement("BirthDate")]` |
 
-`Name` needs no attribute because the element name matches the property name. `Type` is parsed
+`Name` needs no attribute because the element name matches the property name. Every value the
+importer has to judge arrives as text, so the service decides what is acceptable and can say why,
+rather than the serializer failing the whole document. `Type` is parsed
 from the attribute text and must be a whole number naming an
 [AddressType](ClientXMLApp/Models/Address.cs) member (`Unknown = 0`, `Home = 1`, `Public = 2`);
 absent, non-numeric and out-of-range values are all rejected. `BirthDate` is read as text and
 parsed as `yyyy-MM-dd`, so a value carrying a time or an offset is refused rather than shifted
 into the server's timezone. An `<Address>` body has to be text: a child element is refused, and a
 comment or a processing instruction is stripped before binding, since `[XmlText]` keeps only the
-last text node and would otherwise drop the text in front of it. The `ID` attribute is
-deserialized and then discarded, since keys come from the identity column.
+last text node and would otherwise drop the text in front of it. The `ID` attribute is read and
+then discarded, since keys come from the identity column, so an unusable one cannot reject a file
+over a field nothing reads.
 
 The page rejects an upload over 10 MB, then reads it as a `Stream` through an `XmlReader` with
 `DtdProcessing.Prohibit` and no resolver, so a document cannot pull in an external entity or
@@ -69,13 +72,15 @@ the whole file, and the batch is inserted with a single `SaveChangesAsync`.
 ## How it is put together
 
 Razor Pages depend on `IClientService` and `IClientImportService`;
-[ClientService](ClientXMLApp/Services/ClientService.cs) is the only class that touches
+[ClientService](ClientXMLApp/Services/ClientService.cs) is the only class that queries
 `AppDbContext`. Entities do not leave the service layer.
 
 Validation is one set of data annotations on the DTOs, run twice: `ModelState` applies them to
 the form post, and `ClientImportService` applies the same annotations to each imported record. A
 name is 3 to 200 characters, an address text 5 to 400, a client needs at least one address, and
-an address type has to be a defined enum member.
+an address type has to be present and a defined enum member. Text is trimmed before it is
+measured, and both paths read a date through the same strict `yyyy-MM-dd` parser, so neither
+accepts a value the other would refuse.
 
 EF Core is used directly, with no repository or unit-of-work layer over it: `DbContext` is
 already a unit of work, `DbSet<T>` is already a repository, and keeping the query as an
@@ -122,7 +127,7 @@ dotnet test
 
 The suite runs in about a second and needs no SQL Server. It runs against SQLite in memory rather than
 the EF in-memory provider, because the behaviour under test belongs to the database: `ORDER BY`,
-`LIMIT`/`OFFSET`, cascade delete, identity keys.
+`LIMIT`/`OFFSET`, identity keys.
 
 Three hooks make that checkable. A `SaveChanges` interceptor counts how many times the service
 saves, since a batch insert lands the same rows whether it saves once or once per client. A
@@ -135,6 +140,9 @@ The importer tests need no database at all, and cover the attribute mapping, a t
 document, a wrong root element, an unparseable date, a declared DTD, an entity pointing at a
 file on disk, a missing birth date, an address type outside the enum, and the sample file in the
 repository root.
+
+The create page's guards are tested by driving the page model directly, with no server: a gap in
+the posted address indexes, the date rule, and a body that is not a form.
 
 [CI](.github/workflows/ci.yml) runs the build with warnings as errors, the tests, and
 `dotnet ef migrations has-pending-model-changes`, which fails if the model and the migrations
@@ -157,12 +165,11 @@ list, sort and export. Where it stops:
 - No authentication. `UseAuthorization` sits in the pipeline with no scheme behind it, and the
   export hands every client to anyone who asks.
 - `UseSqlServer` has no `EnableRetryOnFailure`, so a transient connection fault fails the request.
-- The 10 MB cap is the page's own. ASP.NET Core buffers a request body over 64 KB to a
-  temporary file before the handler runs, so the framework's limits apply first.
-- Tests build their schema with `EnsureCreated()`, so the migrations are never executed by CI,
-  and SQLite sorts with binary collation where SQL Server is case-insensitive.
-- The 10 MB upload cap is the page's own check and runs after the body has been buffered.
-  Kestrel's 30 MB limit trips first on a larger file, returning a bare 400 rather than the
-  friendly message.
+- The 10 MB upload cap is the page's own check and runs after ASP.NET Core has buffered the body,
+  so the framework's limits apply first. Kestrel's 30 MB limit trips on a larger file, returning a
+  bare 400 rather than the friendly message.
+- Tests build their schema with `EnsureCreated()`, so the migrations are never executed by CI.
+  SQLite also sorts with binary collation where SQL Server is case-insensitive, and does not
+  enforce column widths, so a widened length rule would pass the suite and fail on SQL Server.
 - There is no way to edit or remove a client. The listing, the form and the import are the whole
   surface.
