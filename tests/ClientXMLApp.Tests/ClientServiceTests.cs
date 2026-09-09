@@ -99,6 +99,44 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task Ties_break_in_the_same_direction_as_the_sort()
+        {
+            Seed(("Same", 1990), ("Same", 1991), ("Same", 1992));
+            var service = _db.NewService();
+
+            var ascending = await service.GetClientsAsync(new ClientQuery
+            {
+                SortBy = ClientSortingOptions.Name,
+                SortAscending = true
+            });
+            var descending = await service.GetClientsAsync(new ClientQuery
+            {
+                SortBy = ClientSortingOptions.Name,
+                SortAscending = false
+            });
+
+            var ids = ascending.Items.Select(c => c.ID).ToList();
+            Assert.Equal(ids.OrderBy(id => id), ids);
+            Assert.Equal(ids.OrderByDescending(id => id), descending.Items.Select(c => c.ID));
+        }
+
+        [Fact]
+        public async Task Birth_date_ties_break_in_the_same_direction_as_the_sort()
+        {
+            Seed(("Alice", 1990), ("Bob", 1990), ("Cleo", 1990));
+            var service = _db.NewService();
+
+            var descending = await service.GetClientsAsync(new ClientQuery
+            {
+                SortBy = ClientSortingOptions.BirthDate,
+                SortAscending = false
+            });
+
+            var ids = descending.Items.Select(c => c.ID).ToList();
+            Assert.Equal(ids.OrderByDescending(id => id), ids);
+        }
+
+        [Fact]
         public async Task Returns_only_the_requested_page()
         {
             Seed(Enumerable.Range(1, 25).Select(i => ($"Client {i:00}", 1990)).ToArray());

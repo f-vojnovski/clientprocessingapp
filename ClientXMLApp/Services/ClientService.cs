@@ -129,11 +129,11 @@ namespace ClientXMLApp.Services
                 case ClientSortingOptions.Name:
                     return ascending
                         ? clients.OrderBy(c => c.Name).ThenBy(c => c.ID)
-                        : clients.OrderByDescending(c => c.Name).ThenBy(c => c.ID);
+                        : clients.OrderByDescending(c => c.Name).ThenByDescending(c => c.ID);
                 case ClientSortingOptions.BirthDate:
                     return ascending
                         ? clients.OrderBy(c => c.BirthDate).ThenBy(c => c.ID)
-                        : clients.OrderByDescending(c => c.BirthDate).ThenBy(c => c.ID);
+                        : clients.OrderByDescending(c => c.BirthDate).ThenByDescending(c => c.ID);
                 default:
                     return ascending
                         ? clients.OrderBy(c => c.ID)
