@@ -1,6 +1,7 @@
 using ClientXMLApp.Models;
 using ClientXMLApp.Services;
 using ClientXMLApp.Tests.Fakes;
+using System.Globalization;
 using System.Text;
 
 namespace ClientXMLApp.Tests
@@ -386,6 +387,53 @@ namespace ClientXMLApp.Tests
 
             Assert.Contains("not a whole number", ex.Message);
             Assert.DoesNotContain("could not be read", ex.Message);
+        }
+
+        [Fact]
+        public async Task Imports_a_document_declared_in_a_legacy_code_page()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            const string xml = @"<?xml version=""1.0"" encoding=""windows-1250""?>
+<Clients>
+    <Client><Name>Zdravko Šimić</Name>
+        <Addresses><Address Type=""1"">Ulica Šenoina 12</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>";
+            using var stream = new MemoryStream(Encoding.GetEncoding("windows-1250").GetBytes(xml));
+
+            var imported = await CreateService().ImportClientsAsync(stream);
+
+            Assert.Equal(1, imported);
+            Assert.Equal("Zdravko Šimić", _clientService.LastBatch[0].Name);
+        }
+
+        [Theory]
+        [InlineData("th-TH")]
+        [InlineData("ar-SA")]
+        [InlineData("de-DE")]
+        public async Task Reads_the_same_date_under_any_server_culture(string culture)
+        {
+            var original = Thread.CurrentThread.CurrentCulture;
+            Thread.CurrentThread.CurrentCulture = new CultureInfo(culture);
+            try
+            {
+                using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>2001-09-02</BirthDate>
+    </Client>
+</Clients>");
+
+                await CreateService().ImportClientsAsync(stream);
+
+                Assert.Equal(new DateTime(2001, 9, 2), _clientService.LastBatch[0].BirthDate);
+            }
+            finally
+            {
+                Thread.CurrentThread.CurrentCulture = original;
+            }
         }
 
         [Fact]

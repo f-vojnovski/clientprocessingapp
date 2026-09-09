@@ -1,6 +1,13 @@
 using ClientXMLApp.Data;
 using ClientXMLApp.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Text;
+
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 

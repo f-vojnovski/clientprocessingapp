@@ -1,4 +1,5 @@
 @page
+@using System.Globalization
 @model ClientXMLApp.Pages.Clients.ViewModel
 @{
     ViewData["Title"] = "Clients";
@@ -55,7 +56,7 @@
             <tr>
                 <td>@client.ID</td>
                 <td>@client.Name</td>
-                <td>@client.BirthDate.ToString("yyyy-MM-dd")</td>
+                <td>@client.BirthDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)</td>
                 <td>
                     <ul class="mb-0">
                         @foreach (var address in client.Addresses)
