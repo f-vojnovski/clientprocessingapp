@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using ClientXMLApp.Models;
 
-namespace ClientXMLApp.Pages.Client
+namespace ClientXMLApp.Pages.Clients
 {
     public class CreateModel : PageModel
     {
