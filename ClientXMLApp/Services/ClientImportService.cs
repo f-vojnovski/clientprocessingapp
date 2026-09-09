@@ -8,6 +8,8 @@ namespace ClientXMLApp.Services
 {
     public class ClientImportService : IClientImportService
     {
+        private const int MaxReportedFailures = 10;
+
         private const string MalformedMessage =
             "The file could not be read as a client XML document. Check that it is well-formed XML with a <Clients> root element.";
 
@@ -85,35 +87,40 @@ namespace ClientXMLApp.Services
 
         private static void Validate(IReadOnlyList<AddClientDto> clientDtos)
         {
-            var failures = new List<string>();
+            var reported = new List<string>();
+            var total = 0;
 
             for (var i = 0; i < clientDtos.Count; i++)
             {
                 var clientDto = clientDtos[i];
                 var position = i + 1;
 
-                foreach (var error in ValidationErrors(clientDto))
-                {
-                    failures.Add($"Client {position}: {error}");
-                }
+                var errors = ValidationErrors(clientDto)
+                    .Concat(clientDto.Addresses.SelectMany(ValidationErrors));
 
-                if (clientDto.Addresses.Count == 0)
+                foreach (var error in errors)
                 {
-                    failures.Add($"Client {position}: at least one address is required.");
-                }
-
-                foreach (var error in clientDto.Addresses.SelectMany(ValidationErrors))
-                {
-                    failures.Add($"Client {position}: {error}");
+                    total++;
+                    if (reported.Count < MaxReportedFailures)
+                    {
+                        reported.Add($"Client {position}: {error}");
+                    }
                 }
             }
 
-            if (failures.Count > 0)
+            if (total == 0)
             {
-                throw new ClientImportException(
-                    "The file was read but some records are not valid, so nothing was imported. "
-                    + string.Join(" ", failures));
+                return;
             }
+
+            var detail = string.Join(" ", reported);
+            if (total > reported.Count)
+            {
+                detail += $" (and {total - reported.Count} more problems)";
+            }
+
+            throw new ClientImportException(
+                "The file was read but some records are not valid, so nothing was imported. " + detail);
         }
 
         // TryValidateObject does not recurse into collections, so addresses are validated above.

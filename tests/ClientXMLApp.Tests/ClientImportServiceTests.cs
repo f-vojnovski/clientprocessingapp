@@ -200,6 +200,39 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task Reports_a_bounded_number_of_problems_and_counts_the_rest()
+        {
+            var many = new StringBuilder("<Clients>");
+            for (var i = 0; i < 500; i++)
+            {
+                many.Append("<Client><Name>x</Name></Client>");
+            }
+            many.Append("</Clients>");
+            using var stream = StreamOf(many.ToString());
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("more problems)", ex.Message);
+            Assert.True(ex.Message.Length < 2000, $"message grew to {ex.Message.Length} characters");
+            Assert.Empty(_clientService.Batches);
+        }
+
+        [Fact]
+        public async Task States_the_missing_address_rule_once()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name><BirthDate>2001-09-01</BirthDate></Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            var occurrences = ex.Message.Split("address is required").Length - 1;
+            Assert.Equal(1, occurrences);
+        }
+
+        [Fact]
         public async Task Rejects_a_client_that_carries_no_address()
         {
             const string noAddresses = @"<Clients>
