@@ -28,6 +28,9 @@ namespace ClientXMLApp.Data
                 .Property(a => a.ID)
                 .ValueGeneratedOnAdd();
 
+            modelBuilder.Entity<Client>().HasIndex(c => c.Name);
+            modelBuilder.Entity<Client>().HasIndex(c => c.BirthDate);
+
             modelBuilder.Entity<Address>()
                 .HasOne(a => a.Client)
                 .WithMany(c => c.Addresses)

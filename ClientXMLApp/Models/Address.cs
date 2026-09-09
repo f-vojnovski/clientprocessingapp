@@ -5,6 +5,8 @@ namespace ClientXMLApp.Models
 {
     public class Address
     {
+        public const int AddressTextMaxLength = 400;
+
         [Key]
         public int ID { get; set; }
 
@@ -13,6 +15,8 @@ namespace ClientXMLApp.Models
 
         [ForeignKey("ClientID")]
         public Client? Client { get; set; }
+
+        [MaxLength(AddressTextMaxLength)]
         public string AddressText { get; set; } = string.Empty;
     }
 

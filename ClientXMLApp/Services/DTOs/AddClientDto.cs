@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using ClientXMLApp.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace ClientXMLApp.Services.DTOs
 {
@@ -6,6 +7,7 @@ namespace ClientXMLApp.Services.DTOs
     {
         [Required(ErrorMessage = "Name is required.")]
         [MinLength(3, ErrorMessage = "Name must be at least 3 characters long.")]
+        [MaxLength(Client.NameMaxLength, ErrorMessage = "Name must be at most 200 characters long.")]
         public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Birthdate is required.")]

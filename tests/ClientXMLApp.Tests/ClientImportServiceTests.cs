@@ -172,6 +172,25 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task Rejects_a_name_longer_than_the_column_allows()
+        {
+            var tooLong = new string('a', 201);
+            var xml = $@"<Clients>
+    <Client><Name>{tooLong}</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>";
+            using var stream = StreamOf(xml);
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("at most 200 characters", ex.Message);
+            Assert.Empty(_clientService.Batches);
+        }
+
+        [Fact]
         public async Task Imports_the_sample_file_that_ships_with_the_repository()
         {
             await using var file = File.OpenRead("client_import_example.xml");
