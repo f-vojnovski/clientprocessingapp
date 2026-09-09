@@ -6,48 +6,52 @@ namespace ClientXMLApp.Pages.Clients
 {
     public class ImportModel : PageModel
     {
-        private readonly IClientImportService _importService;
+        private const long MaxUploadBytes = 10 * 1024 * 1024;
 
-        public ImportModel(IClientImportService importService)
+        private readonly IClientImportService _importService;
+        private readonly ILogger<ImportModel> _logger;
+
+        public ImportModel(IClientImportService importService, ILogger<ImportModel> logger)
         {
             _importService = importService;
+            _logger = logger;
         }
 
         [BindProperty]
-        public IFormFile XmlFile { get; set; }
+        public IFormFile? XmlFile { get; set; }
 
-        public bool ImportSuccess { get; set; }
-        public string ImportError { get; set; }
+        public int ImportedCount { get; private set; }
+        public string? ErrorMessage { get; private set; }
+
+        public bool ImportSucceeded => ImportedCount > 0;
 
         public void OnGet()
         {
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
         {
             if (XmlFile == null || XmlFile.Length == 0)
             {
-                ImportError = "Please select a valid XML file.";
+                ErrorMessage = "Choose an XML file to import.";
+                return Page();
+            }
+
+            if (XmlFile.Length > MaxUploadBytes)
+            {
+                ErrorMessage = $"That file is larger than the {MaxUploadBytes / (1024 * 1024)} MB limit.";
                 return Page();
             }
 
             try
             {
-                var filePath = Path.GetTempFileName();
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await XmlFile.CopyToAsync(stream);
-                }
-
-                await _importService.ImportClientsAsync(filePath);
-                System.IO.File.Delete(filePath);
-
-                ImportSuccess = true;
+                await using var stream = XmlFile.OpenReadStream();
+                ImportedCount = await _importService.ImportClientsAsync(stream, cancellationToken);
             }
-            catch (Exception ex)
+            catch (ClientImportException ex)
             {
-                ImportError = $"An error occurred while importing clients: {ex.Message}";
+                _logger.LogWarning(ex, "Rejected client import from {FileName}", XmlFile.FileName);
+                ErrorMessage = ex.Message;
             }
 
             return Page();

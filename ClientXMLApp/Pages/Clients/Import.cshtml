@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model ClientXMLApp.Pages.Clients.ImportModel
 @{
     ViewData["Title"] = "Import Clients";
@@ -14,16 +14,17 @@
     <button type="submit" class="btn btn-primary">Import</button>
 </form>
 
-@if (Model.ImportSuccess)
+@if (Model.ImportSucceeded)
 {
     <div class="alert alert-success mt-3">
-        Clients imported successfully!
+        Imported @Model.ImportedCount @(Model.ImportedCount == 1 ? "client" : "clients").
+        <a asp-page="/Clients/View">View them</a>.
     </div>
 }
 
-@if (Model.ImportError != null)
+@if (Model.ErrorMessage != null)
 {
     <div class="alert alert-danger mt-3">
-        Error importing clients: @Model.ImportError
+        @Model.ErrorMessage
     </div>
 }
