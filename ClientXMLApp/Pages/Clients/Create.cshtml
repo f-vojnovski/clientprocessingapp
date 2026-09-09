@@ -60,44 +60,52 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        document.getElementById('addAddress').addEventListener('click', function () {
-            const table = document.getElementById('addressTable').getElementsByTagName('tbody')[0];
-            const rowCount = table.rows.length;
+        const addressBody = document.getElementById('addressTable').getElementsByTagName('tbody')[0];
 
-            const newRow = table.insertRow(rowCount);
-            newRow.innerHTML = `
-                        <tr>
-                            <td>
-                                <input name="Client.Addresses[${rowCount}].AddressText" class="form-control" />
-                                <span class="text-danger"></span>
-                            </td>
-                            <td>
-                                <select name="Client.Addresses[${rowCount}].Type" class="form-control">
-        @foreach (var addressType in Model.AddressTypes)
-        {
-                                            <option value="@addressType">@addressType</option>
-        }
-                                </select>
-                                <span class="text-danger"></span>
-                            </td>
-                            <td>
-                                <button type="button" class="btn btn-danger remove-address">Remove</button>
-                            </td>
-                        </tr>
-                    `;
-            bindRemoveButtons();
-        });
-
-        function bindRemoveButtons() {
-            document.querySelectorAll('.remove-address').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    const row = this.closest('tr');
-                    row.parentNode.removeChild(row);
+        function renumberAddressRows() {
+            Array.prototype.forEach.call(addressBody.rows, function (row, index) {
+                const prefix = 'Client.Addresses[' + index + ']';
+                row.querySelectorAll('[name]').forEach(function (field) {
+                    field.name = field.name.replace(/Client\.Addresses\[\d+\]/, prefix);
+                });
+                row.querySelectorAll('[data-valmsg-for]').forEach(function (span) {
+                    const target = span.getAttribute('data-valmsg-for');
+                    span.setAttribute('data-valmsg-for', target.replace(/Client\.Addresses\[\d+\]/, prefix));
                 });
             });
         }
 
-        bindRemoveButtons();
+        document.getElementById('addAddress').addEventListener('click', function () {
+            const row = addressBody.insertRow(addressBody.rows.length);
+            row.innerHTML = `
+                <td>
+                    <input name="Client.Addresses[0].AddressText" class="form-control" />
+                    <span class="text-danger"></span>
+                </td>
+                <td>
+                    <select name="Client.Addresses[0].Type" class="form-control">
+        @foreach (var addressType in Model.AddressTypes)
+        {
+                        <option value="@addressType">@addressType</option>
+        }
+                    </select>
+                    <span class="text-danger"></span>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-danger remove-address">Remove</button>
+                </td>`;
+            renumberAddressRows();
+        });
+
+        addressBody.addEventListener('click', function (event) {
+            if (!event.target.classList.contains('remove-address')) {
+                return;
+            }
+
+            const row = event.target.closest('tr');
+            row.parentNode.removeChild(row);
+            renumberAddressRows();
+        });
 
         const form = document.getElementById('clientForm');
         const submitButton = document.getElementById('submitButton');
