@@ -1,6 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using System.ComponentModel.DataAnnotations;
-using System.Xml.Serialization;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ClientXMLApp.Models
 {
@@ -13,8 +12,8 @@ namespace ClientXMLApp.Models
         public int ClientID { get; set; }
 
         [ForeignKey("ClientID")]
-        public Client Client { get; set; }
-        public string AddressText { get; set; }
+        public Client? Client { get; set; }
+        public string AddressText { get; set; } = string.Empty;
     }
 
     public enum AddressType

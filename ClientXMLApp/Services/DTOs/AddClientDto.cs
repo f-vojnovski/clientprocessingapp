@@ -6,7 +6,7 @@ namespace ClientXMLApp.Services.DTOs
     {
         [Required(ErrorMessage = "Name is required.")]
         [MinLength(3, ErrorMessage = "Name must be at least 3 characters long.")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Birthdate is required.")]
         [DataType(DataType.Date)]

@@ -7,7 +7,7 @@ namespace ClientXMLApp.Services.DTOs
     {
         [Required(ErrorMessage = "Address text is required.")]
         [MinLength(5, ErrorMessage = "Address text must be at least 5 characters long.")]
-        public string AddressText { get; set; }
+        public string AddressText { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Address type is required.")]
         public AddressType Type { get; set; }
