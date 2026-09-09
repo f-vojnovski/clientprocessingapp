@@ -13,6 +13,7 @@ namespace ClientXMLApp.Services
 
             CreateMap<ViewClientDto, Client>();
             CreateMap<AddClientDto, Client>()
+                .ForMember(dest => dest.ID, opt => opt.Ignore())
                 .ForMember(dest => dest.Addresses, opt => opt.MapFrom(src => src.Addresses));
 
             CreateMap<UpdateClientDto, Client>()
