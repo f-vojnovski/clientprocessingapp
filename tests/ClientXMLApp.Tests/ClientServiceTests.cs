@@ -157,6 +157,22 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task A_page_number_past_the_end_returns_an_empty_page_rather_than_failing()
+        {
+            Seed(("Alice", 1990), ("Bob", 1991));
+
+            var page = await _db.NewService().GetClientsAsync(new ClientQuery
+            {
+                PageNumber = int.MaxValue,
+                PageSize = ClientQuery.MaxPageSize
+            });
+
+            Assert.Empty(page.Items);
+            Assert.Equal(2, page.TotalCount);
+            Assert.False(page.HasNextPage);
+        }
+
+        [Fact]
         public async Task Loads_the_addresses_of_every_client_on_the_page()
         {
             Seed(("Alice", 1990), ("Bob", 1991));
