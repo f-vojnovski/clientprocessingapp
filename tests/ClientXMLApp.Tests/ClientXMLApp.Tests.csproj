@@ -32,6 +32,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The sample the README points at, imported by a test so it cannot silently rot. -->
     <None Include="..\..\client_import_example.xml" Link="client_import_example.xml" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
