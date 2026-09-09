@@ -1,4 +1,5 @@
-﻿using System.Xml.Serialization;
+﻿using System.Xml;
+using System.Xml.Serialization;
 
 namespace ClientXMLApp.Services.DTOs
 {
@@ -20,15 +21,21 @@ namespace ClientXMLApp.Services.DTOs
         [XmlArrayItem("Address")]
         public List<XmlAddress> Addresses { get; set; } = new List<XmlAddress>();
 
-        public DateTime? BirthDate { get; set; }
+        [XmlElement("BirthDate")]
+        public string? BirthDate { get; set; }
     }
 
     public class XmlAddress
     {
         [XmlAttribute("Type")]
-        public int Type { get; set; }
+        public string? Type { get; set; }
 
         [XmlText]
         public string AddressText { get; set; } = string.Empty;
+
+        // [XmlText] keeps only the last text node, so markup in the body would be dropped
+        // silently. Capturing it here makes the record refusable instead.
+        [XmlAnyElement]
+        public XmlElement[]? UnexpectedContent { get; set; }
     }
 }

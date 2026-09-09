@@ -1,6 +1,7 @@
 using ClientXMLApp.Models;
 using ClientXMLApp.Services.DTOs;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Xml;
 using System.Xml.Serialization;
 
@@ -41,8 +42,22 @@ namespace ClientXMLApp.Services
                 throw new ClientImportException("The file contains no client records.");
             }
 
-            var clientDtos = document.Clients.Select(ToDto).ToList();
-            Validate(clientDtos);
+            var failures = new FailureLog();
+            var clientDtos = new List<AddClientDto>(document.Clients.Count);
+
+            for (var i = 0; i < document.Clients.Count; i++)
+            {
+                clientDtos.Add(ToDto(document.Clients[i], i + 1, failures));
+            }
+
+            Validate(clientDtos, failures);
+
+            if (failures.Total > 0)
+            {
+                throw new ClientImportException(
+                    "The file was read but some records are not valid, so nothing was imported. "
+                    + failures.Describe());
+            }
 
             await _clientService.AddClientsAsync(clientDtos, cancellationToken);
 
@@ -69,27 +84,80 @@ namespace ClientXMLApp.Services
             }
         }
 
-        private static AddClientDto ToDto(XmlClient xmlClient)
+        private static AddClientDto ToDto(XmlClient xmlClient, int position, FailureLog failures)
         {
             return new AddClientDto
             {
                 Name = xmlClient.Name,
-                BirthDate = xmlClient.BirthDate,
+                BirthDate = ParseBirthDate(xmlClient.BirthDate, position, failures),
                 Addresses = (xmlClient.Addresses ?? new List<XmlAddress>())
-                    .Select(xmlAddress => new AddressDto
-                    {
-                        AddressText = xmlAddress.AddressText,
-                        Type = (AddressType)xmlAddress.Type
-                    })
+                    .Select(xmlAddress => ToDto(xmlAddress, position, failures))
                     .ToList()
             };
         }
 
-        private static void Validate(IReadOnlyList<AddClientDto> clientDtos)
+        private static AddressDto ToDto(XmlAddress xmlAddress, int position, FailureLog failures)
         {
-            var reported = new List<string>();
-            var total = 0;
+            if (xmlAddress.UnexpectedContent?.Length > 0)
+            {
+                failures.Add($"Client {position}: an address contains markup, which is not allowed.");
+            }
 
+            return new AddressDto
+            {
+                AddressText = xmlAddress.AddressText,
+                Type = ParseAddressType(xmlAddress.Type, position, failures)
+            };
+        }
+
+        private static AddressType ParseAddressType(string? value, int position, FailureLog failures)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                failures.Add($"Client {position}: an address is missing its Type attribute.");
+
+                return AddressType.Unknown;
+            }
+
+            if (int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+            {
+                // An out-of-range number is left to the annotation on AddressDto.
+                return (AddressType)parsed;
+            }
+
+            failures.Add($"Client {position}: an address Type of '{value}' is not a whole number.");
+
+            return AddressType.Unknown;
+        }
+
+        /// <summary>
+        /// Only a plain calendar date is accepted. A value carrying a time or an offset would
+        /// otherwise be shifted into the server's local time and land on a different day.
+        /// </summary>
+        private static DateTime? ParseBirthDate(string? value, int position, FailureLog failures)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            if (DateTime.TryParseExact(
+                    value.Trim(),
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var parsed))
+            {
+                return parsed;
+            }
+
+            failures.Add($"Client {position}: BirthDate must be a date in yyyy-MM-dd form.");
+
+            return null;
+        }
+
+        private static void Validate(IReadOnlyList<AddClientDto> clientDtos, FailureLog failures)
+        {
             for (var i = 0; i < clientDtos.Count; i++)
             {
                 var clientDto = clientDtos[i];
@@ -100,27 +168,35 @@ namespace ClientXMLApp.Services
 
                 foreach (var error in errors)
                 {
-                    total++;
-                    if (reported.Count < MaxReportedFailures)
-                    {
-                        reported.Add($"Client {position}: {error}");
-                    }
+                    failures.Add($"Client {position}: {error}");
+                }
+            }
+        }
+
+        private sealed class FailureLog
+        {
+            private readonly List<string> _reported = new List<string>();
+
+            public int Total { get; private set; }
+
+            public void Add(string failure)
+            {
+                Total++;
+
+                if (_reported.Count < MaxReportedFailures)
+                {
+                    _reported.Add(failure);
                 }
             }
 
-            if (total == 0)
+            public string Describe()
             {
-                return;
-            }
+                var detail = string.Join(" ", _reported);
 
-            var detail = string.Join(" ", reported);
-            if (total > reported.Count)
-            {
-                detail += $" (and {total - reported.Count} more problems)";
+                return Total > _reported.Count
+                    ? detail + $" (and {Total - _reported.Count} more problems)"
+                    : detail;
             }
-
-            throw new ClientImportException(
-                "The file was read but some records are not valid, so nothing was imported. " + detail);
         }
 
         // TryValidateObject does not recurse into collections, so addresses are validated above.

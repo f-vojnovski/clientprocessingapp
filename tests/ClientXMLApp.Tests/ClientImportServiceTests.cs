@@ -302,6 +302,93 @@ namespace ClientXMLApp.Tests
         }
 
         [Fact]
+        public async Task Rejects_an_address_whose_body_contains_markup()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">Home <b>address</b> here</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("markup", ex.Message);
+            Assert.Empty(_clientService.Batches);
+        }
+
+        [Theory]
+        [InlineData("2001-09-02T01:00:00+05:00")]
+        [InlineData("2001-09-02T01:00:00Z")]
+        [InlineData("02/09/2001")]
+        [InlineData("not a date")]
+        public async Task Rejects_a_birth_date_that_is_not_a_plain_calendar_date(string value)
+        {
+            using var stream = StreamOf($@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>{value}</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("yyyy-MM-dd", ex.Message);
+            Assert.Empty(_clientService.Batches);
+        }
+
+        [Fact]
+        public async Task Keeps_the_date_it_was_given_regardless_of_the_server_timezone()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""1"">Home address</Address></Addresses>
+        <BirthDate>2001-09-02</BirthDate>
+    </Client>
+</Clients>");
+
+            await CreateService().ImportClientsAsync(stream);
+
+            Assert.Equal(new DateTime(2001, 9, 2), _clientService.LastBatch[0].BirthDate);
+        }
+
+        [Fact]
+        public async Task Rejects_an_address_with_no_type_attribute()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address>Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("missing its Type", ex.Message);
+            Assert.Empty(_clientService.Batches);
+        }
+
+        [Fact]
+        public async Task Reports_a_non_numeric_address_type_as_such()
+        {
+            using var stream = StreamOf(@"<Clients>
+    <Client><Name>Ime1</Name>
+        <Addresses><Address Type=""abc"">Home address</Address></Addresses>
+        <BirthDate>2001-09-01</BirthDate>
+    </Client>
+</Clients>");
+
+            var ex = await Assert.ThrowsAsync<ClientImportException>(
+                () => CreateService().ImportClientsAsync(stream));
+
+            Assert.Contains("not a whole number", ex.Message);
+            Assert.DoesNotContain("could not be read", ex.Message);
+        }
+
+        [Fact]
         public async Task Imports_the_sample_file_that_ships_with_the_repository()
         {
             await using var file = File.OpenRead("client_import_example.xml");
