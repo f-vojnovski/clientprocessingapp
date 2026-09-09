@@ -360,9 +360,50 @@ namespace ClientXMLApp.Tests
         {
             Seed(("Zach", 1990), ("Alice", 1991));
 
-            var all = await _db.NewService().GetAllClientsAsync(ClientSortingOptions.Name, sortAscending: true);
+            var all = new List<string>();
+            await foreach (var client in _db.NewService()
+                .StreamAllClientsAsync(ClientSortingOptions.Name, sortAscending: true))
+            {
+                all.Add(client.Name);
+            }
 
-            Assert.Equal(new[] { "Alice", "Zach" }, all.Select(c => c.Name));
+            Assert.Equal(new[] { "Alice", "Zach" }, all);
+        }
+
+        [Fact]
+        public async Task The_export_yields_clients_before_the_query_has_finished()
+        {
+            Seed(Enumerable.Range(1, 40).Select(i => ($"Client {i:00}", 1990)).ToArray());
+
+            var seenBeforeFirstYield = 0;
+            var yielded = 0;
+            await foreach (var client in _db.NewService().StreamAllClientsAsync())
+            {
+                if (yielded == 0)
+                {
+                    seenBeforeFirstYield = _db.Sql.Count;
+                }
+
+                yielded++;
+                Assert.NotNull(client.Name);
+            }
+
+            Assert.Equal(40, yielded);
+            Assert.True(seenBeforeFirstYield > 0, "no command was sent before the first row arrived");
+        }
+
+        [Fact]
+        public async Task The_export_carries_the_addresses_of_every_client()
+        {
+            Seed(("Alice", 1990), ("Bob", 1991));
+
+            var clients = new List<ViewClientDto>();
+            await foreach (var client in _db.NewService().StreamAllClientsAsync())
+            {
+                clients.Add(client);
+            }
+
+            Assert.All(clients, client => Assert.Single(client.Addresses));
         }
 
         [Fact]

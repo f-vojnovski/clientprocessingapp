@@ -21,7 +21,7 @@ namespace ClientXMLApp.Tests.Fakes
         public Task<PagedResult<ViewClientDto>> GetClientsAsync(ClientQuery query, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<IReadOnlyList<ViewClientDto>> GetAllClientsAsync(
+        public IAsyncEnumerable<ViewClientDto> StreamAllClientsAsync(
             ClientSortingOptions sortBy = ClientSortingOptions.None,
             bool sortAscending = true,
             CancellationToken cancellationToken = default) => throw new NotSupportedException();

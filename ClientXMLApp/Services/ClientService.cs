@@ -3,6 +3,7 @@ using ClientXMLApp.Data;
 using ClientXMLApp.Models;
 using ClientXMLApp.Services.DTOs;
 using Microsoft.EntityFrameworkCore;
+using System.Runtime.CompilerServices;
 
 namespace ClientXMLApp.Services
 {
@@ -36,14 +37,17 @@ namespace ClientXMLApp.Services
                 totalCount);
         }
 
-        public async Task<IReadOnlyList<ViewClientDto>> GetAllClientsAsync(
+        public async IAsyncEnumerable<ViewClientDto> StreamAllClientsAsync(
             ClientSortingOptions sortBy = ClientSortingOptions.None,
             bool sortAscending = true,
-            CancellationToken cancellationToken = default)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var clients = await Sorted(ReadOnlyClients(), sortBy, sortAscending).ToListAsync(cancellationToken);
+            var clients = Sorted(ExportClients(), sortBy, sortAscending).AsAsyncEnumerable();
 
-            return Map(clients);
+            await foreach (var client in clients.WithCancellation(cancellationToken))
+            {
+                yield return _mapper.Map<ViewClientDto>(client);
+            }
         }
 
         public async Task<ViewClientDto?> GetClientByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -115,6 +119,11 @@ namespace ClientXMLApp.Services
 
             await _context.SaveChangesAsync(cancellationToken);
         }
+
+        private IQueryable<Client> ExportClients() => _context.Clients
+            .AsNoTracking()
+            .Include(c => c.Addresses)
+            .AsSingleQuery();
 
         private IQueryable<Client> ReadOnlyClients() => _context.Clients
             .AsNoTracking()

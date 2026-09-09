@@ -6,7 +6,7 @@ namespace ClientXMLApp.Services
     {
         Task<PagedResult<ViewClientDto>> GetClientsAsync(ClientQuery query, CancellationToken cancellationToken = default);
 
-        Task<IReadOnlyList<ViewClientDto>> GetAllClientsAsync(
+        IAsyncEnumerable<ViewClientDto> StreamAllClientsAsync(
             ClientSortingOptions sortBy = ClientSortingOptions.None,
             bool sortAscending = true,
             CancellationToken cancellationToken = default);

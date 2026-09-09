@@ -44,10 +44,13 @@ namespace ClientXMLApp.Pages.Clients
 
         public async Task<IActionResult> OnGetExportAsync(CancellationToken cancellationToken)
         {
-            var clients = await _clientService.GetAllClientsAsync(SortBy, SortAscending, cancellationToken);
-            var json = JsonSerializer.SerializeToUtf8Bytes(clients, ExportOptions);
+            Response.ContentType = "application/json";
+            Response.Headers.ContentDisposition = "attachment; filename=clients.json";
 
-            return File(json, "application/json", "clients.json");
+            var clients = _clientService.StreamAllClientsAsync(SortBy, SortAscending, cancellationToken);
+            await JsonSerializer.SerializeAsync(Response.Body, clients, ExportOptions, cancellationToken);
+
+            return new EmptyResult();
         }
 
         public ClientQuery CurrentQuery() => new ClientQuery
